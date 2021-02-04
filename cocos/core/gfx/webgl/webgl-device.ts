@@ -1,3 +1,4 @@
+/* eslint-disable no-lone-blocks */
 /*
  Copyright (c) 2020 Xiamen Yaji Software Co., Ltd.
 

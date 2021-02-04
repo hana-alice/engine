@@ -43,6 +43,7 @@ import { bindingMappingInfo } from './pipeline/define';
 import { SplashScreen } from './splash-screen';
 import { RenderPipeline } from './pipeline';
 import { Node } from './scene-graph/node';
+import { WebGPUDevice } from './gfx/webgpu/webgpu-device';
 
 interface ISceneInfo {
     url: string;
@@ -600,13 +601,18 @@ export class Game extends EventTarget {
     //  @Engine loading
 
     private _initEngine () {
-        this._initDevice();
-        return Promise.resolve(legacyCC.director._init()).then(() => {
+        return Promise.resolve(this._initDeviceAsync()).then(() => {
             // Log engine version
             debug.log(`Cocos Creator v${VERSION}`);
             this.emit(Game.EVENT_ENGINE_INITED);
             this._engineInited = true;
             legacyCC.internal.dynamicAtlasManager.enabled = !macro.CLEANUP_IMAGE_CACHE;
+        });
+    }
+
+    private _initDeviceAsync () {
+        return Promise.resolve(this._initDevice()).then(() => {
+            legacyCC.director._init();
         });
     }
 
@@ -785,7 +791,10 @@ export class Game extends EventTarget {
         this.container = (this.config as any).adapter.container;
 
         this._determineRenderType();
+        return this._constructDevice();
+    }
 
+    private _constructDevice () {
         // WebGL context created successfully
         if (this.renderType === Game.RENDER_TYPE_WEBGL) {
             const ctors: Constructor<Device>[] = [];
@@ -809,10 +818,13 @@ export class Game extends EventTarget {
                     useWebGL2 = false;
                 }
                 if (useWebGL2 && legacyCC.WebGL2Device) {
-                    ctors.push(legacyCC.WebGL2Device);
+                    // ctors.push(legacyCC.WebGL2Device);
                 }
                 if (legacyCC.WebGLDevice) {
-                    ctors.push(legacyCC.WebGLDevice);
+                    // ctors.push(legacyCC.WebGLDevice);
+                }
+                if (legacyCC.WebGPUDevice) {
+                    ctors.push(legacyCC.WebGPUDevice);
                 }
             }
 
@@ -827,7 +839,8 @@ export class Game extends EventTarget {
             );
             for (let i = 0; i < ctors.length; i++) {
                 this._gfxDevice = new ctors[i]();
-                if (this._gfxDevice.initialize(opts)) { break; }
+                this.canvas!.oncontextmenu = () => false;
+                return this._gfxDevice.initialize(opts);
             }
         }
 
@@ -835,10 +848,7 @@ export class Game extends EventTarget {
             // todo fix here for wechat game
             debug.error('can not support canvas rendering in 3D');
             this.renderType = Game.RENDER_TYPE_CANVAS;
-            return;
         }
-
-        this.canvas!.oncontextmenu = () => false;
     }
 
     private _initEvents () {

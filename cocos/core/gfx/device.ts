@@ -406,7 +406,7 @@ export abstract class Device {
     protected _screenSpaceSignY = 1;
     protected _UVSpaceSignY = -1;
 
-    public abstract initialize (info: DeviceInfo): boolean;
+    public abstract initialize (info: DeviceInfo): boolean | Promise<boolean>;
 
     public abstract destroy (): void;
 
