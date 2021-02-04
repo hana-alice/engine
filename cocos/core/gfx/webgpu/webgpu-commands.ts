@@ -1410,8 +1410,6 @@ export function WebGPUCmdFuncDestroyShader (device: WebGPUDevice, gpuShader: IWe
 }
 
 export function WebGPUCmdFuncCreateInputAssember (device: WebGPUDevice, gpuInputAssembler: IWebGPUGPUInputAssembler) {
-    const gl = device.gl;
-
     gpuInputAssembler.glAttribs = new Array<IWebGPUAttrib>(gpuInputAssembler.attributes.length);
 
     const offsets = [0, 0, 0, 0, 0, 0, 0, 0];
@@ -1424,7 +1422,7 @@ export function WebGPUCmdFuncCreateInputAssember (device: WebGPUDevice, gpuInput
 
         const gpuBuffer = gpuInputAssembler.gpuVertexBuffers[stream];
 
-        const glType = GFXFormatToWebGLType(attrib.format, gl);
+        const glType = 0;
         const size = FormatInfos[attrib.format].size;
 
         gpuInputAssembler.glAttribs[i] = {
@@ -1434,7 +1432,7 @@ export function WebGPUCmdFuncCreateInputAssember (device: WebGPUDevice, gpuInput
             size,
             count: FormatInfos[attrib.format].count,
             stride: gpuBuffer.stride,
-            componentCount: WebGLGetComponentCount(glType, gl),
+            componentCount: 4,
             isNormalized: (attrib.isNormalized !== undefined ? attrib.isNormalized : false),
             isInstanced: (attrib.isInstanced !== undefined ? attrib.isInstanced : false),
             offset: offsets[stream],

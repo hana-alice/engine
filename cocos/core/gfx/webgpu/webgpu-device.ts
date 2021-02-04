@@ -158,6 +158,9 @@ export class WebGPUDevice extends Device {
             format: swapchainFormat,
         });
 
+        this._queue = this.createQueue(new QueueInfo(QueueType.GRAPHICS));
+        this._cmdBuff = this.createCommandBuffer(new CommandBufferInfo(this._queue));
+
         // glslangModule().then((glslang) => {
         //     this._glslang = glslang;
         // });
