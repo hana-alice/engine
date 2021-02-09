@@ -123,6 +123,10 @@ export class WebGPUDevice extends Device {
         return null!;
     }
 
+    get indexedIndirect () {
+        return this._indexedIndirect;
+    }
+
     public stateCache: WebGPUStateCache = new WebGPUStateCache();
     public cmdAllocator: WebGPUCommandAllocator = new WebGPUCommandAllocator();
     public nullTex2D: WebGPUTexture | null = null;
@@ -134,6 +138,7 @@ export class WebGPUDevice extends Device {
     private _swapChain: GPUSwapChain | null = null;
     private _glslang: Glslang | null = null;
     private _bindingMappingInfo: BindingMappingInfo = new BindingMappingInfo();
+    private _indexedIndirect = false;
 
     public initialize (info: DeviceInfo): Promise<boolean> {
         return this.initDevice(info);
@@ -157,6 +162,9 @@ export class WebGPUDevice extends Device {
             device,
             format: swapchainFormat,
         });
+
+        // FIXME: require by query
+        this._indexedIndirect = false;
 
         this._queue = this.createQueue(new QueueInfo(QueueType.GRAPHICS));
         this._cmdBuff = this.createCommandBuffer(new CommandBufferInfo(this._queue));

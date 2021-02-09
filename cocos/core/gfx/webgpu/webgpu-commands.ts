@@ -927,7 +927,7 @@ export function WebGPUCmdFuncUpdateBuffer (device: WebGPUDevice, gpuBuffer: IWeb
     } else {
         const nativeDevice: GPUDevice = device.nativeDevice()!;
         let buff = buffer as ArrayBuffer;
-        if (buff.byteLength != size) {
+        if (buff.byteLength !== size) {
             buff = buff.slice(0, size);
         }
         // gpuBuffer.glbuffer may not able to be mapped directly, so staging buffer here.

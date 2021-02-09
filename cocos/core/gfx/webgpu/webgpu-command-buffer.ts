@@ -314,6 +314,22 @@ export class WebGPUCommandBuffer extends CommandBuffer {
             if (this._isStateInvalied) {
                 this.bindStates();
             }
+            
+            const passEncoder = this._encoder?.renderPassEncoder;
+            const ia = this._curGPUInputAssembler!;
+            const nativeDevice = this._device as WebGPUDevice;
+            const indirectBuffer = this._curGPUInputAssembler?.gpuIndirectBuffer;
+            if (indirectBuffer) {
+                if (nativeDevice.indexedIndirect) {
+                    if( ia.gpuIndirectBuffer?.indirects )
+                    passEncoder?.drawIndexedIndirect(ia.gpuIndirectBuffer?.glBuffer!, ia?.gpuIndirectBuffer?.glOffset!);
+                }
+                else {
+                    passEncoder?.drawIndirect(ia.gpuIndirectBuffer?.glBuffer!, ia?.gpuIndirectBuffer?.glOffset!)
+                }
+            } else {
+
+            }
 
             const cmd = this._webGLAllocator!.drawCmdPool.alloc(WebGPUCmdDraw);
             // cmd.drawInfo = inputAssembler;
@@ -333,6 +349,7 @@ export class WebGPUCommandBuffer extends CommandBuffer {
             const indexCount = inputAssembler.indexCount || inputAssembler.vertexCount;
             if (this._curGPUPipelineState) {
                 const glPrimitive = this._curGPUPipelineState.glPrimitive;
+                this._encoder?.renderPassEncoder.draw(,)
                 switch (glPrimitive) {
                 case 0x0004: { // WebGLRenderingContext.TRIANGLES
                     this._numTris += indexCount / 3 * Math.max(inputAssembler.instanceCount, 1);
@@ -461,7 +478,7 @@ export class WebGPUCommandBuffer extends CommandBuffer {
         const ia = this._curGPUInputAssembler!;
 
         for (let i = 0; i < ia.gpuVertexBuffers.length; i++) {
-
+            this._encoder?.renderPassEncoder.setVertexBuffer(i, ia.gpuVertexBuffers[i].glBuffer!, ia.gpuVertexBuffers[i].glOffset);
         }
 
         this._encoder?.renderPassEncoder.setBlendColor([this._curBlendConstants[0],
@@ -469,33 +486,8 @@ export class WebGPUCommandBuffer extends CommandBuffer {
             this._curBlendConstants[2],
             this._curBlendConstants[3]]);
 
-        this._encoder?.renderPassEncoder.setVertexBuffer(this._curGPUInputAssembler?.gpuVertexBuffers);
-
-        this._curGPUPipelineState?.gpuPipelineLayout;
-
-        const dynamicOffsetIndexSet = dynamicOffsetIndices[glBlock.set];
-        const dynamicOffsetIndex = dynamicOffsetIndexSet && dynamicOffsetIndexSet[glBlock.binding];
-        let offset = gpuDescriptor.gpuBuffer.glOffset;
-        if (dynamicOffsetIndex >= 0) offset += dynamicOffsets[dynamicOffsetIndex];
-
-        const bindStatesCmd = this._webGLAllocator!.bindStatesCmdPool.alloc(WebGPUCmdBindStates);
-        bindStatesCmd.gpuPipelineState = this._curGPUPipelineState;
-        Array.prototype.push.apply(bindStatesCmd.gpuDescriptorSets, this._curGPUDescriptorSets);
-        for (let i = 0; i < this._curDynamicOffsets.length; i++) {
-            Array.prototype.push.apply(bindStatesCmd.dynamicOffsets, this._curDynamicOffsets[i]);
-        }
-        bindStatesCmd.gpuInputAssembler = this._curGPUInputAssembler;
-        bindStatesCmd.viewport = this._curViewport;
-        bindStatesCmd.scissor = this._curScissor;
-        bindStatesCmd.lineWidth = this._curLineWidth;
-        bindStatesCmd.depthBias = this._curDepthBias;
-        Array.prototype.push.apply(bindStatesCmd.blendConstants, this._curBlendConstants);
-        bindStatesCmd.depthBounds = this._curDepthBounds;
-        bindStatesCmd.stencilWriteMask = this._curStencilWriteMask;
-        bindStatesCmd.stencilCompareMask = this._curStencilCompareMask;
-
-        this.cmdPackage.bindStatesCmds.push(bindStatesCmd);
-        this.cmdPackage.cmds.push(WebGPUCmd.BIND_STATES);
+        this._encoder?.renderPassEncoder.setIndexBuffer(ia.gpuIndexBuffer?.glBuffer as GPUBuffer,
+            ia.glIndexType, ia.gpuIndexBuffer?.glOffset, ia.gpuIndexBuffer?.size);
 
         this._isStateInvalied = false;
     }

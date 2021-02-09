@@ -818,13 +818,13 @@ export class Game extends EventTarget {
                     useWebGL2 = false;
                 }
                 if (useWebGL2 && legacyCC.WebGL2Device) {
-                    // ctors.push(legacyCC.WebGL2Device);
+                    ctors.push(legacyCC.WebGL2Device);
                 }
                 if (legacyCC.WebGLDevice) {
                     // ctors.push(legacyCC.WebGLDevice);
                 }
                 if (legacyCC.WebGPUDevice) {
-                    ctors.push(legacyCC.WebGPUDevice);
+                    // ctors.push(legacyCC.WebGPUDevice);
                 }
             }
 

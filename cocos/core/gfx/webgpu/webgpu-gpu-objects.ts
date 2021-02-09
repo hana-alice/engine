@@ -43,6 +43,7 @@ export interface IWebGPUGPUBuffer {
 
     buffer: ArrayBufferView | null;
     indirects: DrawInfo[];
+    drawIndirectByIndex: boolean;
 }
 
 export interface IWebGPUGPUTexture {
