@@ -4,7 +4,6 @@ import { WebGPUDevice } from './webgpu-device';
 import { IWebGPUGPUSampler } from './webgpu-gpu-objects';
 
 export class WebGPUSampler extends Sampler {
-
     public get gpuSampler (): IWebGPUGPUSampler {
         return  this._gpuSampler!;
     }
@@ -12,7 +11,6 @@ export class WebGPUSampler extends Sampler {
     private _gpuSampler: IWebGPUGPUSampler | null = null;
 
     public initialize (info: SamplerInfo): boolean {
-
         this._minFilter = info.minFilter;
         this._magFilter = info.magFilter;
         this._mipFilter = info.mipFilter;
@@ -37,12 +35,12 @@ export class WebGPUSampler extends Sampler {
             minLOD: this._minLOD,
             maxLOD: this._maxLOD,
 
-            glMinFilter: "linear",
-            glMagFilter: "linear",
-            glMipFilter: "linear",
-            glWrapS: "clamp-to-edge",
-            glWrapT: "clamp-to-edge",
-            glWrapR: "clamp-to-edge",
+            glMinFilter: 'linear',
+            glMagFilter: 'linear',
+            glMipFilter: 'linear',
+            glWrapS: 'clamp-to-edge',
+            glWrapT: 'clamp-to-edge',
+            glWrapR: 'clamp-to-edge',
         };
 
         WebGPUCmdFuncCreateSampler(this._device as WebGPUDevice, this._gpuSampler);

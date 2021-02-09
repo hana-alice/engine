@@ -176,6 +176,10 @@ export class WebGPUDevice extends Device {
     public acquire () {
     }
 
+    get swapChain () {
+        return this._swapChain;
+    }
+
     public nativeDevice () {
         return this._device;
     }

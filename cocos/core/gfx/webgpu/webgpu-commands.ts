@@ -20,6 +20,9 @@ import {
     Type,
     FormatInfo,
     TextureUsageBit,
+    StoreOp,
+    ShaderStageFlags,
+    DescriptorType,
 } from '../define';
 import { Color, Rect, Viewport, BufferTextureCopy } from '../define-class';
 import { WebGLEXT } from '../webgl/webgl-define';
@@ -47,7 +50,8 @@ import {
     IWebGPUGPUUniformSampler,
     IWebGPUGPURenderPass,
 } from './webgpu-gpu-objects';
-import { UniformBlock } from '../shader';
+import { WebGPURenderPass } from './webgpu-render-pass';
+import { RenderPass } from '../render-pass';
 import { TextureInfo } from '../texture';
 import { linear } from '../../animation/easing';
 
@@ -75,6 +79,29 @@ const _f32v4 = new Float32Array(4);
 function CmpF32NotEuqal (a: number, b: number): boolean {
     const c = a - b;
     return (c > 0.000001 || c < -0.000001);
+}
+
+export function GLStageToWebGPUStage (stage: ShaderStageFlags) {
+    let flag = 0x0;
+    if (stage & ShaderStageFlagBit.VERTEX) { flag |= GPUShaderStage.VERTEX; }
+    if (stage & ShaderStageFlagBit.FRAGMENT) { flag |= GPUShaderStage.FRAGMENT; }
+    if (stage & ShaderStageFlagBit.COMPUTE) { flag |= GPUShaderStage.COMPUTE; }
+    if (stage & ShaderStageFlagBit.ALL) { flag |= (GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT | GPUShaderStage.COMPUTE); }
+    if (flag === 0x0) { console.error('shader stage not supported by webGPU!'); }
+    return flag;
+}
+
+export function GLDescTypeToWebGPUDescType (descType: DescriptorType) {
+    switch (descType) {
+    case DescriptorType.UNIFORM_BUFFER:
+        return 'uniform-buffer';
+    case DescriptorType.STORAGE_BUFFER:
+        return 'storage-buffer';
+    case DescriptorType.SAMPLER:
+        return 'sampler';
+    default:
+        console.error('binding type not support by webGPU!');
+    }
 }
 
 export function GFXFormatToWebGLType (format: Format, gl: WebGL2RenderingContext): GLenum {
@@ -490,22 +517,52 @@ const WebGLBlendOps: GLenum[] = [
     0x8006, // WebGLRenderingContext.FUNC_ADD,
 ];
 
-const WebGLBlendFactors: GLenum[] = [
-    0x0000, // WebGLRenderingContext.ZERO,
-    0x0001, // WebGLRenderingContext.ONE,
-    0x0302, // WebGLRenderingContext.SRC_ALPHA,
-    0x0304, // WebGLRenderingContext.DST_ALPHA,
-    0x0303, // WebGLRenderingContext.ONE_MINUS_SRC_ALPHA,
-    0x0305, // WebGLRenderingContext.ONE_MINUS_DST_ALPHA,
-    0x0300, // WebGLRenderingContext.SRC_COLOR,
-    0x0306, // WebGLRenderingContext.DST_COLOR,
-    0x0301, // WebGLRenderingContext.ONE_MINUS_SRC_COLOR,
-    0x0307, // WebGLRenderingContext.ONE_MINUS_DST_COLOR,
-    0x0308, // WebGLRenderingContext.SRC_ALPHA_SATURATE,
-    0x8001, // WebGLRenderingContext.CONSTANT_COLOR,
-    0x8002, // WebGLRenderingContext.ONE_MINUS_CONSTANT_COLOR,
-    0x8003, // WebGLRenderingContext.CONSTANT_ALPHA,
-    0x8004, // WebGLRenderingContext.ONE_MINUS_CONSTANT_ALPHA,
+export const WebGPUStencilOp: GPUStencilOperation[] = [
+    'zero',
+    'keep',
+    'replace',
+    'increment-clamp',
+    'decrement-clamp',
+    'invert',
+    'increment-wrap',
+    'decrement-wrap',
+];
+
+export const WebGPUCompereFunc: GPUCompareFunction[] = [
+    'never',
+    'less',
+    'equal',
+    'less-equal',
+    'greater',
+    'not-equal',
+    'greater-equal',
+    'always',
+];
+
+export const WebGPUBlendOps: GPUBlendOperation[] = [
+    'add',
+    'subtract',
+    'reverse-subtract',
+    'min',
+    'max',
+];
+
+export const WebGPUBlendFactors: GPUBlendFactor[] = [
+    'zero',
+    'one',
+    'src-alpha',
+    'dst-alpha',
+    'one-minus-src-alpha',
+    'one-minus-dst-alpha',
+    'src-color',
+    'dst-color',
+    'one-minus-src-color',
+    'one-minus-dst-color',
+    'src-alpha-saturated',
+    'blend-color', // CONSTANT_COLOR
+    'one-minus-blend-color', // ONE_MINUS_CONSTANT_COLOR
+    'src-alpha', // CONSTANT_ALPHA: not supported
+    'one-minus-src-alpha', // ONE_MINUS_CONSTANT_ALPHA: not supported
 ];
 
 export enum WebGPUCmd {
@@ -1153,7 +1210,11 @@ export function WebGPUCmdFuncCreateShader (device: WebGPUDevice, gpuShader: IWeb
         const sourceCode = `#version 310 es\n${gpuStage.source}`;
         const code = useWGSL ? sourceCode : glslang.compileGLSL(sourceCode, shaderTypeStr, true);
         const shader: GPUShaderModule = nativeDevice?.createShaderModule({ code });
-        gpuStage.glShader = shader;
+        const shaderStage: GPUProgrammableStageDescriptor = {
+            module: shader,
+            entryPoint: 'main',
+        };
+        gpuStage.glShader = shaderStage;
         // const complieInfo = shader.compilationInfo();
         // void complieInfo.then((info) => {
         //     console.info(info);
@@ -1215,191 +1276,190 @@ export function WebGPUCmdFuncCreateShader (device: WebGPUDevice, gpuShader: IWeb
     //     return;
     // }
 
-    // // parse inputs
-    // const activeAttribCount = gl.getProgramParameter(gpuShader.glProgram, gl.ACTIVE_ATTRIBUTES);
-    // gpuShader.glInputs = new Array<IWebGPUGPUInput>(activeAttribCount);
+    // parse inputs
+    const activeAttribCount = gl.getProgramParameter(gpuShader.glProgram, gl.ACTIVE_ATTRIBUTES);
+    gpuShader.glInputs = new Array<IWebGPUGPUInput>(activeAttribCount);
 
-    // for (let i = 0; i < activeAttribCount; ++i) {
-    //     const attribInfo = gl.getActiveAttrib(gpuShader.glProgram, i);
-    //     if (attribInfo) {
-    //         let varName: string;
-    //         const nameOffset = attribInfo.name.indexOf('[');
-    //         if (nameOffset !== -1) {
-    //             varName = attribInfo.name.substr(0, nameOffset);
-    //         } else {
-    //             varName = attribInfo.name;
-    //         }
+    for (let i = 0; i < activeAttribCount; ++i) {
+        const attribInfo = gl.getActiveAttrib(gpuShader.glProgram, i);
+        if (attribInfo) {
+            let varName: string;
+            const nameOffset = attribInfo.name.indexOf('[');
+            if (nameOffset !== -1) {
+                varName = attribInfo.name.substr(0, nameOffset);
+            } else {
+                varName = attribInfo.name;
+            }
 
-    //         const glLoc = gl.getAttribLocation(gpuShader.glProgram, varName);
-    //         const type = WebGLTypeToGFXType(attribInfo.type, gl);
-    //         const stride = WebGLGetTypeSize(attribInfo.type, gl);
+            const glLoc = gl.getAttribLocation(gpuShader.glProgram, varName);
+            const type = WebGLTypeToGFXType(attribInfo.type, gl);
+            const stride = WebGLGetTypeSize(attribInfo.type, gl);
 
-    //         gpuShader.glInputs[i] = {
-    //             name: varName,
-    //             type,
-    //             stride,
-    //             count: attribInfo.size,
-    //             size: stride * attribInfo.size,
+            gpuShader.glInputs[i] = {
+                name: varName,
+                type,
+                stride,
+                count: attribInfo.size,
+                size: stride * attribInfo.size,
 
-    //             glType: attribInfo.type,
-    //             glLoc,
-    //         };
-    //     }
-    // }
+                glType: attribInfo.type,
+                glLoc,
+            };
+        }
+    }
 
-    // // create uniform blocks
-    // const activeBlockCount = gl.getProgramParameter(gpuShader.glProgram, gl.ACTIVE_UNIFORM_BLOCKS);
-    // let blockName: string;
-    // let blockIdx: number;
-    // let blockSize: number;
-    // let block: UniformBlock | null;
+    // create uniform blocks
+    const activeBlockCount = gl.getProgramParameter(gpuShader.glProgram, gl.ACTIVE_UNIFORM_BLOCKS);
+    let blockName: string;
+    let blockIdx: number;
+    let blockSize: number;
+    let block: UniformBlock | null;
 
-    // if (activeBlockCount) {
-    //     gpuShader.glBlocks = new Array<IWebGPUGPUUniformBlock>(activeBlockCount);
+    if (activeBlockCount) {
+        gpuShader.glBlocks = new Array<IWebGPUGPUUniformBlock>(activeBlockCount);
 
-    //     for (let b = 0; b < activeBlockCount; ++b) {
+        for (let b = 0; b < activeBlockCount; ++b) {
+            blockName = gl.getActiveUniformBlockName(gpuShader.glProgram, b)!;
+            const nameOffset = blockName.indexOf('[');
+            if (nameOffset !== -1) {
+                blockName = blockName.substr(0, nameOffset);
+            }
 
-    //         blockName = gl.getActiveUniformBlockName(gpuShader.glProgram, b)!;
-    //         const nameOffset = blockName.indexOf('[');
-    //         if (nameOffset !== -1) {
-    //             blockName = blockName.substr(0, nameOffset);
-    //         }
+            // blockIdx = gl.getUniformBlockIndex(gpuShader.glProgram, blockName);
+            block = null;
+            for (let k = 0; k < gpuShader.blocks.length; k++) {
+                if (gpuShader.blocks[k].name === blockName) {
+                    block = gpuShader.blocks[k];
+                    break;
+                }
+            }
 
-    //         // blockIdx = gl.getUniformBlockIndex(gpuShader.glProgram, blockName);
-    //         block = null;
-    //         for (let k = 0; k < gpuShader.blocks.length; k++) {
-    //             if (gpuShader.blocks[k].name === blockName) {
-    //                 block = gpuShader.blocks[k];
-    //                 break;
-    //             }
-    //         }
+            if (!block) {
+                error(`Block '${blockName}' does not bound`);
+            } else {
+                // blockIdx = gl.getUniformBlockIndex(gpuShader.glProgram, blockName);
+                blockIdx = b;
+                blockSize = gl.getActiveUniformBlockParameter(gpuShader.glProgram, blockIdx, gl.UNIFORM_BLOCK_DATA_SIZE);
+                const glBinding = block.binding + (device.bindingMappingInfo.bufferOffsets[block.set] || 0);
 
-    //         if (!block) {
-    //             error(`Block '${blockName}' does not bound`);
-    //         } else {
-    //             // blockIdx = gl.getUniformBlockIndex(gpuShader.glProgram, blockName);
-    //             blockIdx = b;
-    //             blockSize = gl.getActiveUniformBlockParameter(gpuShader.glProgram, blockIdx, gl.UNIFORM_BLOCK_DATA_SIZE);
-    //             const glBinding = block.binding + (device.bindingMappingInfo.bufferOffsets[block.set] || 0);
+                gl.uniformBlockBinding(gpuShader.glProgram, blockIdx, glBinding);
 
-    //             gl.uniformBlockBinding(gpuShader.glProgram, blockIdx, glBinding);
+                gpuShader.glBlocks[b] = {
+                    set: block.set,
+                    binding: block.binding,
+                    idx: blockIdx,
+                    name: blockName,
+                    size: blockSize,
+                    glBinding,
+                };
+            }
+        }
+    }
 
-    //             gpuShader.glBlocks[b] = {
-    //                 set: block.set,
-    //                 binding: block.binding,
-    //                 idx: blockIdx,
-    //                 name: blockName,
-    //                 size: blockSize,
-    //                 glBinding,
-    //             };
-    //         }
-    //     }
-    // }
+    // create uniform samplers
+    if (gpuShader.samplers.length > 0) {
+        gpuShader.glSamplers = new Array<IWebGPUGPUUniformSampler>(gpuShader.samplers.length);
 
-    // // create uniform samplers
-    // if (gpuShader.samplers.length > 0) {
-    //     gpuShader.glSamplers = new Array<IWebGPUGPUUniformSampler>(gpuShader.samplers.length);
+        for (let i = 0; i < gpuShader.samplers.length; ++i) {
+            const sampler = gpuShader.samplers[i];
+            gpuShader.glSamplers[i] = {
+                set: sampler.set,
+                binding: sampler.binding,
+                name: sampler.name,
+                type: sampler.type,
+                count: sampler.count,
+                units: [],
+                glUnits: null!,
+                glType: GFXTypeToWebGLType(sampler.type, gl),
+                glLoc: null!,
+            };
+        }
+    }
 
-    //     for (let i = 0; i < gpuShader.samplers.length; ++i) {
-    //         const sampler = gpuShader.samplers[i];
-    //         gpuShader.glSamplers[i] = {
-    //             set: sampler.set,
-    //             binding: sampler.binding,
-    //             name: sampler.name,
-    //             type: sampler.type,
-    //             count: sampler.count,
-    //             units: [],
-    //             glUnits: null!,
-    //             glType: GFXTypeToWebGLType(sampler.type, gl),
-    //             glLoc: null!,
-    //         };
-    //     }
-    // }
+    // texture unit index mapping optimization
+    const glActiveSamplers: IWebGPUGPUUniformSampler[] = [];
+    const glActiveSamplerLocations: WebGLUniformLocation[] = [];
+    const bindingMappingInfo = device.bindingMappingInfo;
+    const texUnitCacheMap = device.stateCache.texUnitCacheMap;
 
-    // // texture unit index mapping optimization
-    // const glActiveSamplers: IWebGPUGPUUniformSampler[] = [];
-    // const glActiveSamplerLocations: WebGLUniformLocation[] = [];
-    // const bindingMappingInfo = device.bindingMappingInfo;
-    // const texUnitCacheMap = device.stateCache.texUnitCacheMap;
+    let flexibleSetBaseOffset = 0;
+    for (let i = 0; i < gpuShader.blocks.length; ++i) {
+        if (gpuShader.blocks[i].set === bindingMappingInfo.flexibleSet) {
+            flexibleSetBaseOffset++;
+        }
+    }
 
-    // let flexibleSetBaseOffset = 0;
-    // for (let i = 0; i < gpuShader.blocks.length; ++i) {
-    //     if (gpuShader.blocks[i].set === bindingMappingInfo.flexibleSet) {
-    //         flexibleSetBaseOffset++;
-    //     }
-    // }
+    let arrayOffset = 0;
+    for (let i = 0; i < gpuShader.samplers.length; ++i) {
+        const sampler = gpuShader.samplers[i];
+        const glLoc = gl.getUniformLocation(gpuShader.glProgram, sampler.name);
+        if (glLoc) {
+            glActiveSamplers.push(gpuShader.glSamplers[i]);
+            glActiveSamplerLocations.push(glLoc);
+        }
+        if (texUnitCacheMap[sampler.name] === undefined) {
+            let binding = sampler.binding + bindingMappingInfo.samplerOffsets[sampler.set] + arrayOffset;
+            if (sampler.set === bindingMappingInfo.flexibleSet) binding -= flexibleSetBaseOffset;
+            texUnitCacheMap[sampler.name] = binding % device.maxTextureUnits;
+            arrayOffset += sampler.count - 1;
+        }
+    }
 
-    // let arrayOffset = 0;
-    // for (let i = 0; i < gpuShader.samplers.length; ++i) {
-    //     const sampler = gpuShader.samplers[i];
-    //     const glLoc = gl.getUniformLocation(gpuShader.glProgram, sampler.name);
-    //     if (glLoc) {
-    //         glActiveSamplers.push(gpuShader.glSamplers[i]);
-    //         glActiveSamplerLocations.push(glLoc);
-    //     }
-    //     if (texUnitCacheMap[sampler.name] === undefined) {
-    //         let binding = sampler.binding + bindingMappingInfo.samplerOffsets[sampler.set] + arrayOffset;
-    //         if (sampler.set === bindingMappingInfo.flexibleSet) binding -= flexibleSetBaseOffset;
-    //         texUnitCacheMap[sampler.name] = binding % device.maxTextureUnits;
-    //         arrayOffset += sampler.count - 1;
-    //     }
-    // }
+    if (glActiveSamplers.length) {
+        const usedTexUnits: boolean[] = [];
+        // try to reuse existing mappings first
+        for (let i = 0; i < glActiveSamplers.length; ++i) {
+            const glSampler = glActiveSamplers[i];
 
-    // if (glActiveSamplers.length) {
-    //     const usedTexUnits: boolean[] = [];
-    //     // try to reuse existing mappings first
-    //     for (let i = 0; i < glActiveSamplers.length; ++i) {
-    //         const glSampler = glActiveSamplers[i];
+            let cachedUnit = texUnitCacheMap[glSampler.name];
+            if (cachedUnit !== undefined) {
+                glSampler.glLoc = glActiveSamplerLocations[i];
+                for (let t = 0; t < glSampler.count; ++t) {
+                    while (usedTexUnits[cachedUnit]) {
+                        cachedUnit = (cachedUnit + 1) % device.maxTextureUnits;
+                    }
+                    glSampler.units.push(cachedUnit);
+                    usedTexUnits[cachedUnit] = true;
+                }
+            }
+        }
+        // fill in the rest sequencially
+        let unitIdx = 0;
+        for (let i = 0; i < glActiveSamplers.length; ++i) {
+            const glSampler = glActiveSamplers[i];
 
-    //         let cachedUnit = texUnitCacheMap[glSampler.name];
-    //         if (cachedUnit !== undefined) {
-    //             glSampler.glLoc = glActiveSamplerLocations[i];
-    //             for (let t = 0; t < glSampler.count; ++t) {
-    //                 while (usedTexUnits[cachedUnit]) {
-    //                     cachedUnit = (cachedUnit + 1) % device.maxTextureUnits;
-    //                 }
-    //                 glSampler.units.push(cachedUnit);
-    //                 usedTexUnits[cachedUnit] = true;
-    //             }
-    //         }
-    //     }
-    //     // fill in the rest sequencially
-    //     let unitIdx = 0;
-    //     for (let i = 0; i < glActiveSamplers.length; ++i) {
-    //         const glSampler = glActiveSamplers[i];
+            if (!glSampler.glLoc) {
+                glSampler.glLoc = glActiveSamplerLocations[i];
+                while (usedTexUnits[unitIdx]) unitIdx++;
+                for (let t = 0; t < glSampler.count; ++t) {
+                    while (usedTexUnits[unitIdx]) {
+                        unitIdx = (unitIdx + 1) % device.maxTextureUnits;
+                    }
+                    if (texUnitCacheMap[glSampler.name] === undefined) {
+                        texUnitCacheMap[glSampler.name] = unitIdx;
+                    }
+                    glSampler.units.push(unitIdx);
+                    usedTexUnits[unitIdx] = true;
+                }
+            }
+        }
 
-    //         if (!glSampler.glLoc) {
-    //             glSampler.glLoc = glActiveSamplerLocations[i];
-    //             while (usedTexUnits[unitIdx]) unitIdx++;
-    //             for (let t = 0; t < glSampler.count; ++t) {
-    //                 while (usedTexUnits[unitIdx]) {
-    //                     unitIdx = (unitIdx + 1) % device.maxTextureUnits;
-    //                 }
-    //                 if (texUnitCacheMap[glSampler.name] === undefined) {
-    //                     texUnitCacheMap[glSampler.name] = unitIdx;
-    //                 }
-    //                 glSampler.units.push(unitIdx);
-    //                 usedTexUnits[unitIdx] = true;
-    //             }
-    //         }
-    //     }
+        if (device.stateCache.glProgram !== gpuShader.glProgram) {
+            gl.useProgram(gpuShader.glProgram);
+        }
 
-    //     if (device.stateCache.glProgram !== gpuShader.glProgram) {
-    //         gl.useProgram(gpuShader.glProgram);
-    //     }
+        for (let k = 0; k < glActiveSamplers.length; k++) {
+            const glSampler = glActiveSamplers[k];
+            glSampler.glUnits = new Int32Array(glSampler.units);
+            gl.uniform1iv(glSampler.glLoc, glSampler.glUnits);
+        }
 
-    //     for (let k = 0; k < glActiveSamplers.length; k++) {
-    //         const glSampler = glActiveSamplers[k];
-    //         glSampler.glUnits = new Int32Array(glSampler.units);
-    //         gl.uniform1iv(glSampler.glLoc, glSampler.glUnits);
-    //     }
+        if (device.stateCache.glProgram !== gpuShader.glProgram) {
+            gl.useProgram(device.stateCache.glProgram);
+        }
+    }
 
-    //     if (device.stateCache.glProgram !== gpuShader.glProgram) {
-    //         gl.useProgram(device.stateCache.glProgram);
-    //     }
-    // }
-
-    // gpuShader.glSamplers = glActiveSamplers;
+    gpuShader.glSamplers = glActiveSamplers;
 }
 
 export function WebGPUCmdFuncDestroyShader (device: WebGPUDevice, gpuShader: IWebGPUGPUShader) {
@@ -1456,30 +1516,52 @@ interface IWebGPUStateCache {
     gpuPipelineState: IWebGPUGPUPipelineState | null;
     gpuInputAssembler: IWebGPUGPUInputAssembler | null;
     reverseCW: boolean;
-    glPrimitive: number;
+    glPrimitive: GPUPrimitiveTopology;
     invalidateAttachments: GLenum[];
 }
 const gfxStateCache: IWebGPUStateCache = {
     gpuPipelineState: null,
     gpuInputAssembler: null,
     reverseCW: false,
-    glPrimitive: 0,
+    glPrimitive: 'triangle-list',
     invalidateAttachments: [],
 };
 
 export function WebGPUCmdFuncBeginRenderPass (
     device: WebGPUDevice,
-    gpuRenderPass: IWebGPUGPURenderPass | null,
+    gpuRenderPass: WebGPURenderPass,
     gpuFramebuffer: IWebGPUGPUFramebuffer | null,
     renderArea: Rect,
     clearColors: Color[],
     clearDepth: number,
     clearStencil: number,
 ) {
-    const gl = device.gl;
+    const nativeDevice = device.nativeDevice();
+
     const cache = device.stateCache;
 
     let clears: GLbitfield = 0;
+
+    const nativeRenPassDesc = gpuRenderPass.gpuRenderPass.nativeRenderPass!;
+    for (let i = 0; i < clearColors.length; i++) {
+        nativeRenPassDesc.colorAttachments[i] = {
+            attachment: gpuFramebuffer?.gpuColorTextures[i].glTexture,
+            loadValue: clearColors[i], // ABGR/RGBA/BGRA ?
+            storeOp: gpuRenderPass?.colorAttachments[i].storeOp === StoreOp.STORE ? 'store' : 'clear',
+        };
+    }
+
+    if (gpuRenderPass?.depthStencilAttachment) {
+        nativeRenPassDesc.depthStencilAttachment = {
+            attachment: gpuFramebuffer?.gpuDepthStencilTexture?.glTexture?.createView() as GPUTextureView,
+            depthLoadValue: clearDepth,
+            depthStoreOp: gpuRenderPass.depthStencilAttachment.depthStoreOp === StoreOp.STORE ? 'store' : 'clear',
+            // depthReadOnly:
+            stencilLoadValue: clearStencil,
+            stencilStoreOp: gpuRenderPass.depthStencilAttachment.stencilStoreOp === StoreOp.STORE ? 'store' : 'clear',
+            // stencilReadOnly:
+        };
+    }
 
     if (gpuFramebuffer && gpuRenderPass) {
         if (cache.glFramebuffer !== gpuFramebuffer.glFramebuffer) {
@@ -1660,21 +1742,21 @@ export function WebGPUCmdFuncBindStates (
     const cache = device.stateCache;
     const gpuShader = gpuPipelineState && gpuPipelineState.gpuShader;
 
-    let isShaderChanged = false;
+    const isShaderChanged = false;
 
     // bind pipeline
     if (gpuPipelineState && gfxStateCache.gpuPipelineState !== gpuPipelineState) {
         gfxStateCache.gpuPipelineState = gpuPipelineState;
         gfxStateCache.glPrimitive = gpuPipelineState.glPrimitive;
 
-        if (gpuShader) {
-            const glProgram = gpuShader.glProgram;
-            if (cache.glProgram !== glProgram) {
-                gl.useProgram(glProgram);
-                cache.glProgram = glProgram;
-                isShaderChanged = true;
-            }
-        }
+        // if (gpuShader) {
+        //     const glProgram = gpuShader.glProgram;
+        //     if (cache.glProgram !== glProgram) {
+        //         gl.useProgram(glProgram);
+        //         cache.glProgram = glProgram;
+        //         isShaderChanged = true;
+        //     }
+        // }
 
         // rasterizer state
         const rs = gpuPipelineState.rs;

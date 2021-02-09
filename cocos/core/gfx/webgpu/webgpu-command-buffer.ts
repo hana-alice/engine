@@ -5,6 +5,7 @@ import {
     BufferUsageBit,
     CommandBufferType,
     StencilFace,
+    StoreOp,
 } from '../define';
 import { BufferTextureCopy, Color, Rect, Viewport } from '../define-class';
 import { Framebuffer } from '../framebuffer';
@@ -22,15 +23,19 @@ import {
     WebGPUCmdDraw,
     WebGPUCmdPackage,
     WebGPUCmdUpdateBuffer,
+    WebGPUCmdFuncBeginRenderPass,
 } from './webgpu-commands';
 import { WebGPUDevice } from './webgpu-device';
 import { WebGPUFramebuffer } from './webgpu-framebuffer';
-import { IWebGPUGPUInputAssembler, IWebGPUGPUDescriptorSet, IWebGPUGPUPipelineState } from './webgpu-gpu-objects';
+import { IWebGPUGPUInputAssembler, IWebGPUGPUDescriptorSet, IWebGPUGPUPipelineState, IWebGPUGPUPipelineLayout } from './webgpu-gpu-objects';
 import { WebGPUInputAssembler } from './webgpu-input-assembler';
 import { WebGPUPipelineState } from './webgpu-pipeline-state';
 import { WebGPUTexture } from './webgpu-texture';
 import { RenderPass } from '../render-pass';
 import { WebGPURenderPass } from './webgpu-render-pass';
+import { WebGPUFence } from './webgpu-fence';
+import { view } from '../../platform';
+import { INT_MAX } from '../../math/bits';
 
 export interface IWebGPUDepthBias {
     constantFactor: number;
@@ -54,11 +59,11 @@ export interface IWebGPUStencilCompareMask {
     compareMask: number;
 }
 
+type CommandEncoder = {commandEncoder: GPUCommandEncoder, renderPassEncoder: GPURenderPassEncoder};
 export class WebGPUCommandBuffer extends CommandBuffer {
-
     public cmdPackage: WebGPUCmdPackage = new WebGPUCmdPackage();
     protected _webGLAllocator: WebGPUCommandAllocator | null = null;
-    protected _isInRenderPass: boolean = false;
+    protected _isInRenderPass = false;
     protected _curGPUPipelineState: IWebGPUGPUPipelineState | null = null;
     protected _curGPUDescriptorSets: IWebGPUGPUDescriptorSet[] = [];
     protected _curGPUInputAssembler: IWebGPUGPUInputAssembler | null = null;
@@ -71,15 +76,19 @@ export class WebGPUCommandBuffer extends CommandBuffer {
     protected _curDepthBounds: IWebGPUDepthBounds | null = null;
     protected _curStencilWriteMask: IWebGPUStencilWriteMask | null = null;
     protected _curStencilCompareMask: IWebGPUStencilCompareMask | null = null;
-    protected _isStateInvalied: boolean = false;
+    protected _isStateInvalied = false;
 
+    private _nativeCommandBuffer: GPUCommandBuffer | null = null;
+    private _fence: WebGPUFence | null = null;
+    private _encoder: CommandEncoder | undefined = undefined;
+    private _descSetDirtyIndex: number = INT_MAX;
 
     public initialize (info: CommandBufferInfo): boolean {
-
         this._type = info.type;
         this._queue = info.queue;
 
         this._webGLAllocator = (this._device as WebGPUDevice).cmdAllocator;
+        this._encoder = {} as CommandEncoder;
 
         const setCount = (this._device as WebGPUDevice).bindingMappingInfo.bufferOffsets.length;
         for (let i = 0; i < setCount; i++) {
@@ -132,24 +141,47 @@ export class WebGPUCommandBuffer extends CommandBuffer {
         renderArea: Rect,
         clearColors: Color[],
         clearDepth: number,
-        clearStencil: number) {
-        const cmd = this._webGLAllocator!.beginRenderPassCmdPool.alloc(WebGPUCmdBeginRenderPass);
-        cmd.gpuRenderPass = (renderPass as WebGPURenderPass).gpuRenderPass;
-        cmd.gpuFramebuffer = (framebuffer as WebGPUFramebuffer).gpuFramebuffer;
-        cmd.renderArea = renderArea;
-        for (let i = 0; i < clearColors.length; ++i) {
-            cmd.clearColors[i] = clearColors[i];
+        clearStencil: number,
+    ) {
+        const gpuDevice = this._device as WebGPUDevice;
+        const nativeRenPassDesc = (renderPass as WebGPURenderPass).gpuRenderPass.nativeRenderPass!;
+        const gpuFramebuffer = (framebuffer as WebGPUFramebuffer).gpuFramebuffer;
+        const gpuRenderPass = renderPass as WebGPURenderPass;
+        for (let i = 0; i < clearColors.length; i++) {
+            nativeRenPassDesc.colorAttachments[i] = {
+                attachment: gpuFramebuffer?.gpuColorTextures[i].glTexture,
+                loadValue: clearColors[i], // ABGR/RGBA/BGRA ?
+                storeOp: gpuRenderPass?.colorAttachments[i].storeOp === StoreOp.STORE ? 'store' : 'clear',
+            };
         }
-        cmd.clearDepth = clearDepth;
-        cmd.clearStencil = clearStencil;
-        this.cmdPackage.beginRenderPassCmds.push(cmd);
 
-        this.cmdPackage.cmds.push(WebGPUCmd.BEGIN_RENDER_PASS);
+        if (gpuRenderPass?.depthStencilAttachment) {
+            nativeRenPassDesc.depthStencilAttachment = {
+                attachment: gpuFramebuffer?.gpuDepthStencilTexture?.glTexture?.createView() as GPUTextureView,
+                depthLoadValue: clearDepth,
+                depthStoreOp: gpuRenderPass.depthStencilAttachment.depthStoreOp === StoreOp.STORE ? 'store' : 'clear',
+                // depthReadOnly:
+                stencilLoadValue: clearStencil,
+                stencilStoreOp: gpuRenderPass.depthStencilAttachment.stencilStoreOp === StoreOp.STORE ? 'store' : 'clear',
+                // stencilReadOnly:
+            };
+        }
 
+        const cmdEncoder = gpuDevice.nativeDevice()?.createCommandEncoder();
+        this._encoder = {
+            commandEncoder: cmdEncoder as GPUCommandEncoder,
+            renderPassEncoder: cmdEncoder?.beginRenderPass(nativeRenPassDesc) as GPURenderPassEncoder,
+        };
+
+        this._encoder?.renderPassEncoder.setViewport(renderArea.x, renderArea.y, renderArea.width, renderArea.height, 0.0, 1.0);
+        this._encoder?.renderPassEncoder.setScissorRect(renderArea.x, renderArea.y, renderArea.width, renderArea.height);
         this._isInRenderPass = true;
     }
 
     public endRenderPass () {
+        this._encoder?.renderPassEncoder.endPass();
+        const nativeDevice = (this._device as WebGPUDevice).nativeDevice();
+        nativeDevice?.defaultQueue.submit([this._encoder?.commandEncoder.finish() as GPUCommandBuffer]);
         this._isInRenderPass = false;
     }
 
@@ -182,49 +214,18 @@ export class WebGPUCommandBuffer extends CommandBuffer {
     }
 
     public setViewport (viewport: Viewport) {
-        if (!this._curViewport) {
-            this._curViewport = new Viewport(viewport.left, viewport.top, viewport.width, viewport.height, viewport.minDepth, viewport.maxDepth);
-        } else {
-            if (this._curViewport.left !== viewport.left ||
-                this._curViewport.top !== viewport.top ||
-                this._curViewport.width !== viewport.width ||
-                this._curViewport.height !== viewport.height ||
-                this._curViewport.minDepth !== viewport.minDepth ||
-                this._curViewport.maxDepth !== viewport.maxDepth) {
-
-                this._curViewport.left = viewport.left;
-                this._curViewport.top = viewport.top;
-                this._curViewport.width = viewport.width;
-                this._curViewport.height = viewport.height;
-                this._curViewport.minDepth = viewport.minDepth;
-                this._curViewport.maxDepth = viewport.maxDepth;
-                this._isStateInvalied = true;
-            }
-        }
+        this._curViewport = new Viewport(viewport.left, viewport.top, viewport.width, viewport.height, viewport.minDepth, viewport.maxDepth);
+        // FIXME: what viewport.top exactly means?
+        this._encoder?.renderPassEncoder.setViewport(viewport.left, viewport.top,
+            viewport.width, viewport.height, viewport.minDepth, viewport.maxDepth);
     }
 
     public setScissor (scissor: Rect) {
-        if (!this._curScissor) {
-            this._curScissor = new Rect(scissor.x, scissor.y, scissor.width, scissor.height);
-        } else {
-            if (this._curScissor.x !== scissor.x ||
-                this._curScissor.y !== scissor.y ||
-                this._curScissor.width !== scissor.width ||
-                this._curScissor.height !== scissor.height) {
-                this._curScissor.x = scissor.x;
-                this._curScissor.y = scissor.y;
-                this._curScissor.width = scissor.width;
-                this._curScissor.height = scissor.height;
-                this._isStateInvalied = true;
-            }
-        }
+        this._encoder?.renderPassEncoder.setScissorRect(scissor.x, scissor.y, scissor.width, scissor.height);
     }
 
     public setLineWidth (lineWidth: number) {
-        if (this._curLineWidth !== lineWidth) {
-            this._curLineWidth = lineWidth;
-            this._isStateInvalied = true;
-        }
+        console.error('line width not supproted by webGPU');
     }
 
     public setDepthBias (depthBiasConstantFactor: number, depthBiasClamp: number, depthBiasSlopeFactor: number) {
@@ -235,25 +236,22 @@ export class WebGPUCommandBuffer extends CommandBuffer {
                 slopeFactor: depthBiasSlopeFactor,
             };
             this._isStateInvalied = true;
-        } else {
-            if (this._curDepthBias.constantFactor !== depthBiasConstantFactor ||
-                this._curDepthBias.clamp !== depthBiasClamp ||
-                this._curDepthBias.slopeFactor !== depthBiasSlopeFactor) {
-
-                this._curDepthBias.constantFactor = depthBiasConstantFactor;
-                this._curDepthBias.clamp = depthBiasClamp;
-                this._curDepthBias.slopeFactor = depthBiasSlopeFactor;
-                this._isStateInvalied = true;
-            }
+        } else if (this._curDepthBias.constantFactor !== depthBiasConstantFactor
+                || this._curDepthBias.clamp !== depthBiasClamp
+                || this._curDepthBias.slopeFactor !== depthBiasSlopeFactor) {
+            this._curDepthBias.constantFactor = depthBiasConstantFactor;
+            this._curDepthBias.clamp = depthBiasClamp;
+            this._curDepthBias.slopeFactor = depthBiasSlopeFactor;
+            this._isStateInvalied = true;
         }
     }
 
     public setBlendConstants (blendConstants: number[]) {
         if (blendConstants.length === 4 && (
-            this._curBlendConstants[0] !== blendConstants[0] ||
-            this._curBlendConstants[1] !== blendConstants[1] ||
-            this._curBlendConstants[2] !== blendConstants[2] ||
-            this._curBlendConstants[3] !== blendConstants[3])) {
+            this._curBlendConstants[0] !== blendConstants[0]
+            || this._curBlendConstants[1] !== blendConstants[1]
+            || this._curBlendConstants[2] !== blendConstants[2]
+            || this._curBlendConstants[3] !== blendConstants[3])) {
             this._curBlendConstants.length = 0;
             Array.prototype.push.apply(this._curBlendConstants, blendConstants);
             this._isStateInvalied = true;
@@ -267,15 +265,13 @@ export class WebGPUCommandBuffer extends CommandBuffer {
                 maxBounds: maxDepthBounds,
             };
             this._isStateInvalied = true;
-        } else {
-            if (this._curDepthBounds.minBounds !== minDepthBounds ||
-                this._curDepthBounds.maxBounds !== maxDepthBounds) {
-                this._curDepthBounds = {
-                    minBounds: minDepthBounds,
-                    maxBounds: maxDepthBounds,
-                };
-                this._isStateInvalied = true;
-            }
+        } else if (this._curDepthBounds.minBounds !== minDepthBounds
+                || this._curDepthBounds.maxBounds !== maxDepthBounds) {
+            this._curDepthBounds = {
+                minBounds: minDepthBounds,
+                maxBounds: maxDepthBounds,
+            };
+            this._isStateInvalied = true;
         }
     }
 
@@ -286,14 +282,11 @@ export class WebGPUCommandBuffer extends CommandBuffer {
                 writeMask,
             };
             this._isStateInvalied = true;
-        } else {
-            if (this._curStencilWriteMask.face !== face ||
-                this._curStencilWriteMask.writeMask !== writeMask) {
-
-                this._curStencilWriteMask.face = face;
-                this._curStencilWriteMask.writeMask = writeMask;
-                this._isStateInvalied = true;
-            }
+        } else if (this._curStencilWriteMask.face !== face
+                || this._curStencilWriteMask.writeMask !== writeMask) {
+            this._curStencilWriteMask.face = face;
+            this._curStencilWriteMask.writeMask = writeMask;
+            this._isStateInvalied = true;
         }
     }
 
@@ -305,22 +298,19 @@ export class WebGPUCommandBuffer extends CommandBuffer {
                 compareMask,
             };
             this._isStateInvalied = true;
-        } else {
-            if (this._curStencilCompareMask.face !== face ||
-                this._curStencilCompareMask.reference !== reference ||
-                this._curStencilCompareMask.compareMask !== compareMask) {
-
-                this._curStencilCompareMask.face = face;
-                this._curStencilCompareMask.reference = reference;
-                this._curStencilCompareMask.compareMask = compareMask;
-                this._isStateInvalied = true;
-            }
+        } else if (this._curStencilCompareMask.face !== face
+                || this._curStencilCompareMask.reference !== reference
+                || this._curStencilCompareMask.compareMask !== compareMask) {
+            this._curStencilCompareMask.face = face;
+            this._curStencilCompareMask.reference = reference;
+            this._curStencilCompareMask.compareMask = compareMask;
+            this._isStateInvalied = true;
         }
     }
 
     public draw (inputAssembler: InputAssembler) {
-        if (this._type === CommandBufferType.PRIMARY && this._isInRenderPass ||
-            this._type === CommandBufferType.SECONDARY) {
+        if (this._type === CommandBufferType.PRIMARY && this._isInRenderPass
+            || this._type === CommandBufferType.SECONDARY) {
             if (this._isStateInvalied) {
                 this.bindStates();
             }
@@ -344,15 +334,15 @@ export class WebGPUCommandBuffer extends CommandBuffer {
             if (this._curGPUPipelineState) {
                 const glPrimitive = this._curGPUPipelineState.glPrimitive;
                 switch (glPrimitive) {
-                    case 0x0004: { // WebGLRenderingContext.TRIANGLES
-                        this._numTris += indexCount / 3 * Math.max(inputAssembler.instanceCount, 1);
-                        break;
-                    }
-                    case 0x0005: // WebGLRenderingContext.TRIANGLE_STRIP
-                    case 0x0006: { // WebGLRenderingContext.TRIANGLE_FAN
-                        this._numTris += (indexCount - 2) * Math.max(inputAssembler.instanceCount, 1);
-                        break;
-                    }
+                case 0x0004: { // WebGLRenderingContext.TRIANGLES
+                    this._numTris += indexCount / 3 * Math.max(inputAssembler.instanceCount, 1);
+                    break;
+                }
+                case 0x0005: // WebGLRenderingContext.TRIANGLE_STRIP
+                case 0x0006: { // WebGLRenderingContext.TRIANGLE_FAN
+                    this._numTris += (indexCount - 2) * Math.max(inputAssembler.instanceCount, 1);
+                    break;
+                }
                 }
             }
         } else {
@@ -361,8 +351,8 @@ export class WebGPUCommandBuffer extends CommandBuffer {
     }
 
     public updateBuffer (buffer: Buffer, data: BufferSource, offset?: number, size?: number) {
-        if (this._type === CommandBufferType.PRIMARY && !this._isInRenderPass ||
-            this._type === CommandBufferType.SECONDARY) {
+        if (this._type === CommandBufferType.PRIMARY && !this._isInRenderPass
+            || this._type === CommandBufferType.SECONDARY) {
             const gpuBuffer = (buffer as WebGPUBuffer).gpuBuffer;
             if (gpuBuffer) {
                 const cmd = this._webGLAllocator!.updateBufferCmdPool.alloc(WebGPUCmdUpdateBuffer);
@@ -396,8 +386,8 @@ export class WebGPUCommandBuffer extends CommandBuffer {
     }
 
     public copyBuffersToTexture (buffers: ArrayBufferView[], texture: Texture, regions: BufferTextureCopy[]) {
-        if (this._type === CommandBufferType.PRIMARY && !this._isInRenderPass ||
-            this._type === CommandBufferType.SECONDARY) {
+        if (this._type === CommandBufferType.PRIMARY && !this._isInRenderPass
+            || this._type === CommandBufferType.SECONDARY) {
             const gpuTexture = (texture as WebGPUTexture).gpuTexture;
             if (gpuTexture) {
                 const cmd = this._webGLAllocator!.copyBufferToTextureCmdPool.alloc(WebGPUCmdCopyBufferToTexture);
@@ -462,6 +452,32 @@ export class WebGPUCommandBuffer extends CommandBuffer {
     }
 
     protected bindStates () {
+        const { dynamicOffsetIndices } = this._curGPUPipelineState?.gpuPipelineLayout as IWebGPUGPUPipelineLayout;
+        for (let i = 0; i < this._curGPUDescriptorSets.length; i++) {
+            // FIXME: this is a special sentence that 2 in 3 parameters I'm not certain.
+            this._encoder?.renderPassEncoder.setBindGroup(i, this._curGPUDescriptorSets[i].bindGroup, this._curDynamicOffsets[i]);
+        }
+
+        const ia = this._curGPUInputAssembler!;
+
+        for (let i = 0; i < ia.gpuVertexBuffers.length; i++) {
+
+        }
+
+        this._encoder?.renderPassEncoder.setBlendColor([this._curBlendConstants[0],
+            this._curBlendConstants[1],
+            this._curBlendConstants[2],
+            this._curBlendConstants[3]]);
+
+        this._encoder?.renderPassEncoder.setVertexBuffer(this._curGPUInputAssembler?.gpuVertexBuffers);
+
+        this._curGPUPipelineState?.gpuPipelineLayout;
+
+        const dynamicOffsetIndexSet = dynamicOffsetIndices[glBlock.set];
+        const dynamicOffsetIndex = dynamicOffsetIndexSet && dynamicOffsetIndexSet[glBlock.binding];
+        let offset = gpuDescriptor.gpuBuffer.glOffset;
+        if (dynamicOffsetIndex >= 0) offset += dynamicOffsets[dynamicOffsetIndex];
+
         const bindStatesCmd = this._webGLAllocator!.bindStatesCmdPool.alloc(WebGPUCmdBindStates);
         bindStatesCmd.gpuPipelineState = this._curGPUPipelineState;
         Array.prototype.push.apply(bindStatesCmd.gpuDescriptorSets, this._curGPUDescriptorSets);

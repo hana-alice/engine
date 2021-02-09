@@ -1,9 +1,9 @@
 import { PipelineLayout, PipelineLayoutInfo } from '../pipeline-layout';
 import { IWebGPUGPUPipelineLayout, IWebGPUGPUDescriptorSetLayout } from './webgpu-gpu-objects';
 import { WebGPUDescriptorSetLayout } from './webgpu-descriptor-set-layout';
+import { WebGPUDevice } from './webgpu-device';
 
 export class WebGPUPipelineLayout extends PipelineLayout {
-
     get gpuPipelineLayout () { return this._gpuPipelineLayout!; }
 
     private _gpuPipelineLayout: IWebGPUGPUPipelineLayout | null = null;
@@ -14,6 +14,8 @@ export class WebGPUPipelineLayout extends PipelineLayout {
         const dynamicOffsetIndices: number[][] = [];
 
         const gpuSetLayouts: IWebGPUGPUDescriptorSetLayout[] = [];
+        const nativeDevice = (this._device as WebGPUDevice).nativeDevice();
+        const bindGrpLayouts: GPUBindGroupLayout[] = [];
         let dynamicOffsetCount = 0;
         for (let i = 0; i < this._setLayouts.length; i++) {
             const setLayout = this._setLayouts[i] as WebGPUDescriptorSetLayout;
@@ -27,12 +29,17 @@ export class WebGPUPipelineLayout extends PipelineLayout {
             gpuSetLayouts.push(setLayout.gpuDescriptorSetLayout);
             dynamicOffsetIndices.push(indices);
             dynamicOffsetCount += dynamicBindings.length;
+
+            bindGrpLayouts.push(setLayout.gpuDescriptorSetLayout.bindGroupLayout);
         }
+
+        const pipelineLayout = nativeDevice?.createPipelineLayout({ bindGroupLayouts: bindGrpLayouts }) as GPUPipelineLayout;
 
         this._gpuPipelineLayout = {
             gpuSetLayouts,
             dynamicOffsetIndices,
             dynamicOffsetCount,
+            nativePipelineLayout: pipelineLayout,
         };
 
         return true;

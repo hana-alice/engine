@@ -1,35 +1,36 @@
+import { murmurhash2_32_gc } from '../../utils/murmurhash2_gc';
 import { Fence, FenceInfo } from '../fence';
 import { WebGPUDevice } from './webgpu-device';
 
 export class WebGPUFence extends Fence {
-
     private _sync: WebGLSync | null = null;
+    private _fence: GPUFence | undefined = undefined;
+    private _fenceDescriptor: GPUFenceDescriptor | undefined = undefined;
+    private _hash = 0;
 
     public initialize (info: FenceInfo): boolean {
+        const label = 'now fence for pipeline only, make this sentence a type-unique label if numlti-fence needed.';
+        this._hash = murmurhash2_32_gc(label, 666);
+        this._fenceDescriptor = {
+            initialValue: this._hash,
+            label,
+            signalQueue: undefined,
+        };
         return true;
+    }
+
+    public aquire () {
+        this._fence = (this._device as WebGPUDevice).nativeDevice()?.defaultQueue.createFence(this._fenceDescriptor);
+    }
+
+    public release () {
+        (this._device as WebGPUDevice).nativeDevice()?.defaultQueue.signal(this._fence!, 0);
     }
 
     public destroy () {
     }
 
-    public wait () {
-        if (this._sync) {
-            const gl = (this._device as WebGPUDevice).gl;
-            gl.clientWaitSync(this._sync, 0, gl.TIMEOUT_IGNORED);
-        }
-    }
-
-    public reset () {
-        if (this._sync) {
-            const gl = (this._device as WebGPUDevice).gl;
-            gl.deleteSync(this._sync);
-            this._sync = null;
-        }
-    }
-
     public insert () {
-        const gl = (this._device as WebGPUDevice).gl;
-        if (this._sync) { gl.deleteSync(this._sync); }
-        this._sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+
     }
 }

@@ -75,6 +75,7 @@ export interface IWebGPUGPUTexture {
 export interface IWebGPUGPURenderPass {
     colorAttachments: ColorAttachment[];
     depthStencilAttachment: DepthStencilAttachment | null;
+    nativeRenderPass: GPURenderPassDescriptor | null;
 }
 
 export interface IWebGPUGPUFramebuffer {
@@ -156,7 +157,7 @@ export interface IWebGPUGPUUniformSampler {
 export interface IWebGPUGPUShaderStage {
     type: ShaderStageFlagBit;
     source: string;
-    glShader: GPUShaderModule | null;
+    glShader: GPUProgrammableStageDescriptor | null;
 }
 
 export interface IWebGPUGPUShader {
@@ -177,16 +178,18 @@ export interface IWebGPUGPUDescriptorSetLayout {
     dynamicBindings: number[];
     descriptorIndices: number[];
     descriptorCount: number;
+    bindGroupLayout: GPUBindGroupLayout;
 }
 
 export interface IWebGPUGPUPipelineLayout {
     gpuSetLayouts: IWebGPUGPUDescriptorSetLayout[];
     dynamicOffsetCount: number;
     dynamicOffsetIndices: number[][];
+    nativePipelineLayout: GPUPipelineLayout;
 }
 
 export interface IWebGPUGPUPipelineState {
-    glPrimitive: GLenum;
+    glPrimitive: GPUPrimitiveTopology;
     gpuShader: IWebGPUGPUShader | null;
     gpuPipelineLayout: IWebGPUGPUPipelineLayout | null;
     rs: RasterizerState;
@@ -194,6 +197,7 @@ export interface IWebGPUGPUPipelineState {
     bs: BlendState;
     dynamicStates: DynamicStateFlagBit[];
     gpuRenderPass: IWebGPUGPURenderPass | null;
+    nativePipeline: GPUPipelineBase | undefined;
 }
 
 export interface IWebGPUGPUDescriptor {
@@ -206,6 +210,7 @@ export interface IWebGPUGPUDescriptor {
 export interface IWebGPUGPUDescriptorSet {
     gpuDescriptors: IWebGPUGPUDescriptor[];
     descriptorIndices: number[];
+    bindGroup: GPUBindGroup;
 }
 
 export interface IWebGPUAttrib {
@@ -228,6 +233,6 @@ export interface IWebGPUGPUInputAssembler {
     gpuIndirectBuffer: IWebGPUGPUBuffer | null;
 
     glAttribs: IWebGPUAttrib[];
-    glIndexType: GLenum;
+    glIndexType: GPUIndexFormat;
     glVAOs: Map<WebGLProgram, WebGLVertexArrayObject>;
 }
