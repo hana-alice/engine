@@ -24,23 +24,20 @@ export class WebGPUDescriptorSet extends DescriptorSet {
         this._samplers = Array(descriptorCount).fill(null);
 
         const gpuDescriptors: IWebGPUGPUDescriptor[] = [];
-        const bindGroups: GPUBindGroup[] = [];
-        this._gpuDescriptorSet = { gpuDescriptors, descriptorIndices, bindGroups };
+        const bindGroup = {} as GPUBindGroup;
+        this._gpuDescriptorSet = { gpuDescriptors, descriptorIndices, bindGroup };
 
         for (let i = 0; i < bindings.length; ++i) {
             const binding = bindings[i];
             for (let j = 0; j < binding.count; j++) {
-                gpuDescriptors.push({
-                    type: binding.descriptorType,
-                    gpuBuffer: null,
-                    gpuTexture: null,
-                    gpuSampler: null,
-                });
-                const bindGrpEntry: GPUBindGroupEntry = {
-                    binding: binding.binding,
-                    resource: {} as GPUBufferBinding,
-                };
-                this._bindGroupEntries.push(bindGrpEntry);
+                if (binding.descriptorType !== DescriptorType.UNKNOWN) {
+                    gpuDescriptors.push({
+                        type: binding.descriptorType,
+                        gpuBuffer: null,
+                        gpuTexture: null,
+                        gpuSampler: null,
+                    });
+                }
             }
         }
 
@@ -55,37 +52,56 @@ export class WebGPUDescriptorSet extends DescriptorSet {
     public update () {
         if (this._isDirty && this._gpuDescriptorSet) {
             const descriptors = this._gpuDescriptorSet.gpuDescriptors;
-            for (let i = 0; i < descriptors.length; ++i) {
-                if (descriptors[i].type & DESCRIPTOR_BUFFER_TYPE) {
-                    if (this._buffers[i]) {
-                        descriptors[i].gpuBuffer = (this._buffers[i] as WebGPUBuffer).gpuBuffer;
-                        const nativeBuffer = descriptors[i].gpuBuffer?.glBuffer;
-                        this._bindGroupEntries[i].resource = {
-                            buffer: nativeBuffer!,
-                            offset: descriptors[i].gpuBuffer?.glOffset,
-                            size: descriptors[i].gpuBuffer?.size,
-                        };
-                    }
-                } else if (descriptors[i].type & DESCRIPTOR_SAMPLER_TYPE) {
-                    if (this._textures[i]) {
-                        descriptors[i].gpuTexture = (this._textures[i] as WebGPUTexture).gpuTexture;
-                        this._bindGroupEntries[i].resource = descriptors[i].gpuTexture?.glTexture?.createView() as GPUTextureView;
-                    }
-                    if (this._samplers[i]) {
-                        descriptors[i].gpuSampler = (this._samplers[i] as WebGPUSampler).gpuSampler;
-                        this._bindGroupEntries[i].resource = descriptors[i].gpuSampler?.glSampler as GPUSampler;
+            if (descriptors) {
+                let count = 0;
+                for (let i = 0; i < descriptors.length; ++i) {
+                    const binding = (this._layout as WebGPUDescriptorSetLayout).gpuDescriptorSetLayout.bindings[i];
+                    if (descriptors[i].type & DESCRIPTOR_BUFFER_TYPE) {
+                        if (this._buffers[i]) {
+                            descriptors[i].gpuBuffer = (this._buffers[i] as WebGPUBuffer).gpuBuffer;
+                            const nativeBuffer = descriptors[i].gpuBuffer?.glBuffer;
+
+                            const bindGrpEntry: GPUBindGroupEntry = {
+                                binding: binding.binding,
+                                resource: {
+                                    buffer: nativeBuffer!,
+                                    offset: descriptors[i].gpuBuffer?.glOffset,
+                                    size: descriptors[i].gpuBuffer?.size,
+                                },
+                            };
+
+                            this._bindGroupEntries[count++] = bindGrpEntry;
+                        }
+                    } else if (descriptors[i].type & DESCRIPTOR_SAMPLER_TYPE) {
+                        if (this._textures[i]) {
+                            descriptors[i].gpuTexture = (this._textures[i] as WebGPUTexture).gpuTexture;
+
+                            const bindGrpEntry: GPUBindGroupEntry = {
+                                binding: binding.binding,
+                                resource: descriptors[i].gpuTexture?.glTexture?.createView() as GPUTextureView,
+                            };
+
+                            this._bindGroupEntries[count++] = bindGrpEntry;
+                        }
+                        if (this._samplers[i]) {
+                            descriptors[i].gpuSampler = (this._samplers[i] as WebGPUSampler).gpuSampler;
+                            const bindGrpEntry: GPUBindGroupEntry = {
+                                binding: binding.binding,
+                                resource: descriptors[i].gpuSampler?.glSampler as GPUSampler,
+                            };
+                            this._bindGroupEntries[count++] = bindGrpEntry;
+                        }
                     }
                 }
+                this._isDirty = false;
+                const nativeDevice = (this._device as WebGPUDevice).nativeDevice();
+                const bindGroup = nativeDevice?.createBindGroup({
+                    layout: (this._layout as WebGPUDescriptorSetLayout).gpuDescriptorSetLayout.bindGroupLayout,
+                    entries: this._bindGroupEntries,
+                });
+
+                this._gpuDescriptorSet.bindGroup = bindGroup!;
             }
-            this._isDirty = false;
-
-            const nativeDevice = (this._device as WebGPUDevice).nativeDevice();
-            const bindGroup = nativeDevice?.createBindGroup({
-                layout: (this._layout as WebGPUDescriptorSetLayout).gpuDescriptorSetLayout.bindGroupLayout,
-                entries: this._bindGroupEntries,
-            });
-
-            this._gpuDescriptorSet.bindGroup = bindGroup!;
         }
     }
 }

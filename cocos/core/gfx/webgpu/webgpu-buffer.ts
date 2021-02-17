@@ -1,5 +1,5 @@
-import { IndirectBuffer } from '../buffer';
-import { Buffer, BufferSource, BufferInfo, BufferViewInfo } from '../buffer';
+import { IndirectBuffer, Buffer, BufferSource, BufferInfo, BufferViewInfo } from '../buffer';
+
 import { BufferFlagBit, BufferUsageBit } from '../define';
 import {
     WebGPUCmdFuncCreateBuffer,
@@ -11,7 +11,6 @@ import { WebGPUDevice } from './webgpu-device';
 import { IWebGPUGPUBuffer } from './webgpu-gpu-objects';
 
 export class WebGPUBuffer extends Buffer {
-
     get gpuBuffer (): IWebGPUGPUBuffer {
         return  this._gpuBuffer!;
     }
@@ -19,9 +18,7 @@ export class WebGPUBuffer extends Buffer {
     private _gpuBuffer: IWebGPUGPUBuffer | null = null;
 
     public initialize (info: BufferInfo | BufferViewInfo): boolean {
-
         if ('buffer' in info) { // buffer view
-
             this._isBufferView = true;
 
             const buffer = info.buffer as WebGPUBuffer;
@@ -43,9 +40,7 @@ export class WebGPUBuffer extends Buffer {
                 glBuffer: buffer.gpuBuffer.glBuffer,
                 glOffset: info.offset,
             };
-
         } else { // native buffer
-
             this._usage = info.usage;
             this._memUsage = info.memUsage;
             this._size = info.size;
@@ -139,7 +134,7 @@ export class WebGPUBuffer extends Buffer {
         }
 
         let buffSize: number;
-        if (size !== undefined ) {
+        if (size !== undefined) {
             buffSize = size;
         } else if (this._usage & BufferUsageBit.INDIRECT) {
             buffSize = 0;
@@ -156,6 +151,7 @@ export class WebGPUBuffer extends Buffer {
             this._gpuBuffer!,
             buffer,
             offset || 0,
-            buffSize);
+            buffSize,
+        );
     }
 }

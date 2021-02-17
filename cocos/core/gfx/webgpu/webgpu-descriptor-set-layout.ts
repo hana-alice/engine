@@ -2,6 +2,7 @@ import { DescriptorSetLayout, DescriptorSetLayoutInfo, DESCRIPTOR_DYNAMIC_TYPE }
 import { IWebGPUGPUDescriptorSetLayout } from './webgpu-gpu-objects';
 import { WebGPUDevice } from './webgpu-device';
 import { GLStageToWebGPUStage, GLDescTypeToWebGPUDescType } from './webgpu-commands';
+import { DescriptorType } from '../define';
 
 export class WebGPUDescriptorSetLayout extends DescriptorSetLayout {
     get gpuDescriptorSetLayout () { return this._gpuDescriptorSetLayout!; }
@@ -29,13 +30,14 @@ export class WebGPUDescriptorSetLayout extends DescriptorSetLayout {
             const binding = this._bindings[i];
             this._bindingIndices[binding.binding] = i;
             descriptorIndices[binding.binding] = flattenedIndices[i];
-
-            const grpLayoutEntry: GPUBindGroupLayoutEntry = {
-                binding: binding.binding,
-                visibility: GLStageToWebGPUStage(binding.stageFlags),
-                type: GLDescTypeToWebGPUDescType(binding.descriptorType)!,
-            };
-            bindGrpLayoutEntries.push(grpLayoutEntry);
+            if (binding.descriptorType !== DescriptorType.UNKNOWN) {
+                const grpLayoutEntry: GPUBindGroupLayoutEntry = {
+                    binding: binding.binding,
+                    visibility: GLStageToWebGPUStage(binding.stageFlags),
+                    type: GLDescTypeToWebGPUDescType(binding.descriptorType)!,
+                };
+                bindGrpLayoutEntries.push(grpLayoutEntry);
+            }
         }
 
         const bindGrpLayout = nativeDevice?.createBindGroupLayout({ entries: bindGrpLayoutEntries });

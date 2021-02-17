@@ -1,5 +1,5 @@
 import { DescriptorSet } from '../descriptor-set';
-import { Buffer, BufferSource } from '../buffer';
+import { Buffer, BufferSource, DrawInfo } from '../buffer';
 import { CommandBuffer, CommandBufferInfo } from '../command-buffer';
 import {
     BufferUsageBit,
@@ -27,7 +27,12 @@ import {
 } from './webgpu-commands';
 import { WebGPUDevice } from './webgpu-device';
 import { WebGPUFramebuffer } from './webgpu-framebuffer';
-import { IWebGPUGPUInputAssembler, IWebGPUGPUDescriptorSet, IWebGPUGPUPipelineState, IWebGPUGPUPipelineLayout } from './webgpu-gpu-objects';
+import { IWebGPUGPUInputAssembler,
+    IWebGPUGPUDescriptorSet,
+    IWebGPUGPUPipelineState,
+    IWebGPUGPUPipelineLayout,
+    IWebGPUGPUBuffer,
+} from './webgpu-gpu-objects';
 import { WebGPUInputAssembler } from './webgpu-input-assembler';
 import { WebGPUPipelineState } from './webgpu-pipeline-state';
 import { WebGPUTexture } from './webgpu-texture';
@@ -36,6 +41,8 @@ import { WebGPURenderPass } from './webgpu-render-pass';
 import { WebGPUFence } from './webgpu-fence';
 import { view } from '../../platform';
 import { INT_MAX } from '../../math/bits';
+import { size } from '../../math';
+import { barFilled } from '../../../2d/assembler';
 
 export interface IWebGPUDepthBias {
     constantFactor: number;
@@ -72,7 +79,7 @@ export class WebGPUCommandBuffer extends CommandBuffer {
     protected _curScissor: Rect | null = null;
     protected _curLineWidth: number | null = null;
     protected _curDepthBias: IWebGPUDepthBias | null = null;
-    protected _curBlendConstants: number[] = [];
+    protected _curBlendConstants: number[] = [0.0, 0.0, 0.0, 0.0];
     protected _curDepthBounds: IWebGPUDepthBounds | null = null;
     protected _curStencilWriteMask: IWebGPUStencilWriteMask | null = null;
     protected _curStencilCompareMask: IWebGPUStencilCompareMask | null = null;
@@ -118,7 +125,7 @@ export class WebGPUCommandBuffer extends CommandBuffer {
         this._curScissor = null;
         this._curLineWidth = null;
         this._curDepthBias = null;
-        this._curBlendConstants.length = 0;
+        // this._curBlendConstants.length = 0;
         this._curDepthBounds = null;
         this._curStencilWriteMask = null;
         this._curStencilCompareMask = null;
@@ -147,17 +154,22 @@ export class WebGPUCommandBuffer extends CommandBuffer {
         const nativeRenPassDesc = (renderPass as WebGPURenderPass).gpuRenderPass.nativeRenderPass!;
         const gpuFramebuffer = (framebuffer as WebGPUFramebuffer).gpuFramebuffer;
         const gpuRenderPass = renderPass as WebGPURenderPass;
+
         for (let i = 0; i < clearColors.length; i++) {
+            const colorTex = gpuFramebuffer.isOffscreen ? gpuFramebuffer.gpuColorTextures[i].glTexture?.createView()
+                : gpuDevice.defaultColorTex?.createView();
             nativeRenPassDesc.colorAttachments[i] = {
-                attachment: gpuFramebuffer?.gpuColorTextures[i].glTexture,
-                loadValue: clearColors[i], // ABGR/RGBA/BGRA ?
+                attachment: colorTex,
+                loadValue: [clearColors[i].x, clearColors[i].y, clearColors[i].z, clearColors[i].w], // RGBA
                 storeOp: gpuRenderPass?.colorAttachments[i].storeOp === StoreOp.STORE ? 'store' : 'clear',
             };
         }
 
         if (gpuRenderPass?.depthStencilAttachment) {
+            const tex = gpuFramebuffer.gpuDepthStencilTexture?.glTexture;
+            const depthTex = tex ? tex.createView() : gpuDevice.defaultDepthStencilTex?.createView();
             nativeRenPassDesc.depthStencilAttachment = {
-                attachment: gpuFramebuffer?.gpuDepthStencilTexture?.glTexture?.createView() as GPUTextureView,
+                attachment: depthTex!,
                 depthLoadValue: clearDepth,
                 depthStoreOp: gpuRenderPass.depthStencilAttachment.depthStoreOp === StoreOp.STORE ? 'store' : 'clear',
                 // depthReadOnly:
@@ -168,9 +180,10 @@ export class WebGPUCommandBuffer extends CommandBuffer {
         }
 
         const cmdEncoder = gpuDevice.nativeDevice()?.createCommandEncoder();
+        const renpassEncoder = cmdEncoder?.beginRenderPass(nativeRenPassDesc);
         this._encoder = {
             commandEncoder: cmdEncoder as GPUCommandEncoder,
-            renderPassEncoder: cmdEncoder?.beginRenderPass(nativeRenPassDesc) as GPURenderPassEncoder,
+            renderPassEncoder: renpassEncoder!,
         };
 
         this._encoder?.renderPassEncoder.setViewport(renderArea.x, renderArea.y, renderArea.width, renderArea.height, 0.0, 1.0);
@@ -314,52 +327,59 @@ export class WebGPUCommandBuffer extends CommandBuffer {
             if (this._isStateInvalied) {
                 this.bindStates();
             }
-            
+
             const passEncoder = this._encoder?.renderPassEncoder;
-            const ia = this._curGPUInputAssembler!;
+            const ia = inputAssembler as WebGPUInputAssembler;
+            const iaData = ia.gpuInputAssembler;
             const nativeDevice = this._device as WebGPUDevice;
-            const indirectBuffer = this._curGPUInputAssembler?.gpuIndirectBuffer;
-            if (indirectBuffer) {
-                if (nativeDevice.indexedIndirect) {
-                    if( ia.gpuIndirectBuffer?.indirects )
-                    passEncoder?.drawIndexedIndirect(ia.gpuIndirectBuffer?.glBuffer!, ia?.gpuIndirectBuffer?.glOffset!);
-                }
-                else {
-                    passEncoder?.drawIndirect(ia.gpuIndirectBuffer?.glBuffer!, ia?.gpuIndirectBuffer?.glOffset!)
+
+            if (ia.indirectBuffer) {
+                const indirectBuffer = iaData.gpuIndirectBuffer!;
+                if (nativeDevice.multiDrawIndirectSupport) {
+                    // not support yet
+                } else {
+                    const drawInfoCount = iaData.gpuIndirectBuffer?.indirects.length as number;
+                    if (indirectBuffer.drawIndirectByIndex) {
+                        for (let i = 0; i < drawInfoCount; i++) {
+                            passEncoder?.drawIndexedIndirect(indirectBuffer.glBuffer!, indirectBuffer.glOffset + i * Object.keys(DrawInfo).length);
+                        }
+                    } else {
+                        // FIXME: draw IndexedIndirect and Indirect by different buffer
+                        for (let i = 0; i < drawInfoCount; i++) {
+                            passEncoder?.drawIndirect(indirectBuffer.glBuffer!, indirectBuffer.glOffset + i * Object.keys(DrawInfo).length);
+                        }
+                    }
                 }
             } else {
+                const instanceCount = inputAssembler.instanceCount > 0 ? inputAssembler.instanceCount : 1;
+                const drawByIndex = inputAssembler.indirectBuffer && (ia.indexCount > 0);
 
+                if (drawByIndex) {
+                    passEncoder?.drawIndexed(ia.indexCount, ia.instanceCount, ia.firstIndex, ia.firstIndex, ia.firstInstance);
+                } else {
+                    passEncoder?.draw(ia.vertexCount, ia.instanceCount, ia.firstVertex, ia.firstInstance);
+                }
             }
 
-            const cmd = this._webGLAllocator!.drawCmdPool.alloc(WebGPUCmdDraw);
-            // cmd.drawInfo = inputAssembler;
-            cmd.drawInfo.vertexCount = inputAssembler.vertexCount;
-            cmd.drawInfo.firstVertex = inputAssembler.firstVertex;
-            cmd.drawInfo.indexCount = inputAssembler.indexCount;
-            cmd.drawInfo.firstIndex = inputAssembler.firstIndex;
-            cmd.drawInfo.vertexOffset = inputAssembler.vertexOffset;
-            cmd.drawInfo.instanceCount = inputAssembler.instanceCount;
-            cmd.drawInfo.firstInstance = inputAssembler.firstInstance;
-            this.cmdPackage.drawCmds.push(cmd);
-
-            this.cmdPackage.cmds.push(WebGPUCmd.DRAW);
+            passEncoder?.endPass();
+            const commandEncoder = this._encoder?.commandEncoder as GPUCommandEncoder;
+            nativeDevice.nativeDevice()?.defaultQueue.submit([commandEncoder.finish()]);
 
             ++this._numDrawCalls;
             this._numInstances += inputAssembler.instanceCount;
             const indexCount = inputAssembler.indexCount || inputAssembler.vertexCount;
             if (this._curGPUPipelineState) {
                 const glPrimitive = this._curGPUPipelineState.glPrimitive;
-                this._encoder?.renderPassEncoder.draw(,)
                 switch (glPrimitive) {
-                case 0x0004: { // WebGLRenderingContext.TRIANGLES
+                case 'triangle-strip':
+                    this._numTris += (indexCount - 2) * Math.max(inputAssembler.instanceCount, 1);
+                    break;
+                case 'triangle-list': { // WebGLRenderingContext.TRIANGLES
                     this._numTris += indexCount / 3 * Math.max(inputAssembler.instanceCount, 1);
                     break;
                 }
-                case 0x0005: // WebGLRenderingContext.TRIANGLE_STRIP
-                case 0x0006: { // WebGLRenderingContext.TRIANGLE_FAN
-                    this._numTris += (indexCount - 2) * Math.max(inputAssembler.instanceCount, 1);
+                default:
                     break;
-                }
                 }
             }
         } else {

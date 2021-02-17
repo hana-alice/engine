@@ -123,8 +123,16 @@ export class WebGPUDevice extends Device {
         return null!;
     }
 
-    get indexedIndirect () {
-        return this._indexedIndirect;
+    get multiDrawIndirectSupport () {
+        return this._multiDrawIndirect;
+    }
+
+    get defaultColorTex () {
+        return this._swapChain?.getCurrentTexture();
+    }
+
+    get defaultDepthStencilTex () {
+        return this._defaultDepthStencilTex;
     }
 
     public stateCache: WebGPUStateCache = new WebGPUStateCache();
@@ -138,7 +146,8 @@ export class WebGPUDevice extends Device {
     private _swapChain: GPUSwapChain | null = null;
     private _glslang: Glslang | null = null;
     private _bindingMappingInfo: BindingMappingInfo = new BindingMappingInfo();
-    private _indexedIndirect = false;
+    private _multiDrawIndirect = false;
+    private _defaultDepthStencilTex: GPUTexture | null = null;
 
     public initialize (info: DeviceInfo): Promise<boolean> {
         return this.initDevice(info);
@@ -163,8 +172,18 @@ export class WebGPUDevice extends Device {
             format: swapchainFormat,
         });
 
+        this._defaultDepthStencilTex = device.createTexture({
+            size: {
+                width: this._canvas.width,
+                height: this._canvas.height,
+                depth: 1,
+            },
+            format: 'depth24plus-stencil8',
+            usage: GPUTextureUsage.OUTPUT_ATTACHMENT,
+        });
+
         // FIXME: require by query
-        this._indexedIndirect = false;
+        this._multiDrawIndirect = false;
 
         this._queue = this.createQueue(new QueueInfo(QueueType.GRAPHICS));
         this._cmdBuff = this.createCommandBuffer(new CommandBufferInfo(this._queue));
@@ -176,9 +195,13 @@ export class WebGPUDevice extends Device {
     }
 
     public destroy (): void {
+        if (this._defaultDepthStencilTex) {
+            this._defaultDepthStencilTex?.destroy();
+        }
     }
 
     public resize (width: number, height: number) {
+
     }
 
     public acquire () {

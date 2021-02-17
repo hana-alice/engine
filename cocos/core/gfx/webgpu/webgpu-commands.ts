@@ -54,6 +54,7 @@ import { WebGPURenderPass } from './webgpu-render-pass';
 import { RenderPass } from '../render-pass';
 import { TextureInfo } from '../texture';
 import { linear } from '../../animation/easing';
+import { math } from '../..';
 
 const WebGPUAdressMode: GPUAddressMode[] = [
     'repeat', // WRAP,
@@ -94,6 +95,7 @@ export function GLStageToWebGPUStage (stage: ShaderStageFlags) {
 export function GLDescTypeToWebGPUDescType (descType: DescriptorType) {
     switch (descType) {
     case DescriptorType.UNIFORM_BUFFER:
+    case DescriptorType.DYNAMIC_UNIFORM_BUFFER:
         return 'uniform-buffer';
     case DescriptorType.STORAGE_BUFFER:
         return 'storage-buffer';
@@ -739,91 +741,13 @@ export function WebGPUCmdFuncCreateBuffer (device: WebGPUDevice, gpuBuffer: IWeb
         console.error('Unsupported GFXBufferType yet, create STORAGE buffer in default.');
         bufferUsage |= GPUBufferUsage.STORAGE;
     }
+
+    // FIXME: depend by inputs but vertexbuffer was updated without COPY_DST.
+    bufferUsage |= GPUBufferUsage.COPY_DST;
+
     bufferDesc.usage = bufferUsage;
     gpuBuffer.glTarget = bufferUsage;
     gpuBuffer.glBuffer = nativeDevice.createBuffer(bufferDesc);
-
-    // const gl = device.gl;
-    // const cache = device.stateCache;
-    // const glUsage: GLenum = gpuBuffer.memUsage & MemoryUsageBit.HOST ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW;
-
-    // if (gpuBuffer.usage & BufferUsageBit.VERTEX) {
-
-    //     gpuBuffer.glTarget = gl.ARRAY_BUFFER;
-    //     const glBuffer = gl.createBuffer();
-
-    //     if (glBuffer) {
-    //         gpuBuffer.glBuffer = glBuffer;
-    //         if (gpuBuffer.size > 0) {
-    //             if (device.useVAO) {
-    //                 if (cache.glVAO) {
-    //                     gl.bindVertexArray(null);
-    //                     cache.glVAO = gfxStateCache.gpuInputAssembler = null;
-    //                 }
-    //             }
-
-    //             if (device.stateCache.glArrayBuffer !== gpuBuffer.glBuffer) {
-    //                 gl.bindBuffer(gl.ARRAY_BUFFER, gpuBuffer.glBuffer);
-    //                 device.stateCache.glArrayBuffer = gpuBuffer.glBuffer;
-    //             }
-
-    //             gl.bufferData(gl.ARRAY_BUFFER, gpuBuffer.size, glUsage);
-
-    //             gl.bindBuffer(gl.ARRAY_BUFFER, null);
-    //             device.stateCache.glArrayBuffer = null;
-    //         }
-    //     }
-    // } else if (gpuBuffer.usage & BufferUsageBit.INDEX) {
-
-    //     gpuBuffer.glTarget = gl.ELEMENT_ARRAY_BUFFER;
-    //     const glBuffer = gl.createBuffer();
-    //     if (glBuffer) {
-    //         gpuBuffer.glBuffer = glBuffer;
-    //         if (gpuBuffer.size > 0) {
-    //             if (device.useVAO) {
-    //                 if (cache.glVAO) {
-    //                     gl.bindVertexArray(null);
-    //                     cache.glVAO = gfxStateCache.gpuInputAssembler = null;
-    //                 }
-    //             }
-
-    //             if (device.stateCache.glElementArrayBuffer !== gpuBuffer.glBuffer) {
-    //                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gpuBuffer.glBuffer);
-    //                 device.stateCache.glElementArrayBuffer = gpuBuffer.glBuffer;
-    //             }
-
-    //             gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, gpuBuffer.size, glUsage);
-
-    //             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
-    //             device.stateCache.glElementArrayBuffer = null;
-    //         }
-    //     }
-    // } else if (gpuBuffer.usage & BufferUsageBit.UNIFORM) {
-
-    //     gpuBuffer.glTarget = gl.UNIFORM_BUFFER;
-    //     const glBuffer = gl.createBuffer();
-    //     if (glBuffer && gpuBuffer.size > 0) {
-    //         gpuBuffer.glBuffer = glBuffer;
-    //         if (device.stateCache.glUniformBuffer !== gpuBuffer.glBuffer) {
-    //             gl.bindBuffer(gl.UNIFORM_BUFFER, gpuBuffer.glBuffer);
-    //             device.stateCache.glUniformBuffer = gpuBuffer.glBuffer;
-    //         }
-
-    //         gl.bufferData(gl.UNIFORM_BUFFER, gpuBuffer.size, glUsage);
-
-    //         gl.bindBuffer(gl.UNIFORM_BUFFER, null);
-    //         device.stateCache.glUniformBuffer = null;
-    //     }
-    // } else if (gpuBuffer.usage & BufferUsageBit.INDIRECT) {
-    //     gpuBuffer.glTarget = gl.NONE;
-    // } else if (gpuBuffer.usage & BufferUsageBit.TRANSFER_DST) {
-    //     gpuBuffer.glTarget = gl.NONE;
-    // } else if (gpuBuffer.usage & BufferUsageBit.TRANSFER_SRC) {
-    //     gpuBuffer.glTarget = gl.NONE;
-    // } else {
-    //     console.error('Unsupported GFXBufferType, create buffer failed.');
-    //     gpuBuffer.glTarget = gl.NONE;
-    // }
 }
 
 export function WebGPUCmdFuncDestroyBuffer (device: WebGPUDevice, gpuBuffer: IWebGPUGPUBuffer) {
@@ -946,62 +870,6 @@ export function WebGPUCmdFuncUpdateBuffer (device: WebGPUDevice, gpuBuffer: IWeb
         const commandBuffer = commandEncoder.finish();
         nativeDevice.defaultQueue.submit([commandBuffer]);
         stagingBuffer.destroy();
-        //     switch (gpuBuffer.usage) {
-        //         case gl.ARRAY_BUFFER: {
-        //             if (cache.glVAO) {
-        //                 gl.bindVertexArray(null);
-        //                 cache.glVAO = gfxStateCache.gpuInputAssembler = null;
-        //             }
-
-        //             if (cache.glArrayBuffer !== gpuBuffer.glBuffer) {
-        //                 gl.bindBuffer(gl.ARRAY_BUFFER, gpuBuffer.glBuffer);
-        //                 cache.glArrayBuffer = gpuBuffer.glBuffer;
-        //             }
-
-        //             if (size === buff.byteLength) {
-        //                 gl.bufferSubData(gpuBuffer.glTarget, offset, buff);
-        //             } else {
-        //                 gl.bufferSubData(gpuBuffer.glTarget, offset, buff.slice(0, size));
-        //             }
-        //             break;
-        //         }
-        //         case gl.ELEMENT_ARRAY_BUFFER: {
-        //             if (cache.glVAO) {
-        //                 gl.bindVertexArray(null);
-        //                 cache.glVAO = gfxStateCache.gpuInputAssembler = null;
-        //             }
-
-        //             if (cache.glElementArrayBuffer !== gpuBuffer.glBuffer) {
-        //                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gpuBuffer.glBuffer);
-        //                 cache.glElementArrayBuffer = gpuBuffer.glBuffer;
-        //             }
-
-        //             if (size === buff.byteLength) {
-        //                 gl.bufferSubData(gpuBuffer.glTarget, offset, buff);
-        //             } else {
-        //                 gl.bufferSubData(gpuBuffer.glTarget, offset, buff.slice(0, size));
-        //             }
-        //             break;
-        //         }
-        //         case gl.UNIFORM_BUFFER: {
-        //             if (cache.glUniformBuffer !== gpuBuffer.glBuffer) {
-        //                 gl.bindBuffer(gl.UNIFORM_BUFFER, gpuBuffer.glBuffer);
-        //                 cache.glUniformBuffer = gpuBuffer.glBuffer;
-        //             }
-
-    //             if (size === buff.byteLength) {
-    //                 gl.bufferSubData(gpuBuffer.glTarget, offset, buff);
-    //             } else {
-    //                 gl.bufferSubData(gpuBuffer.glTarget, offset, new Float32Array(buff, 0, size / 4));
-    //             }
-    //             break;
-    //         }
-    //         default: {
-    //             console.error('Unsupported GFXBufferType, update buffer failed.');
-    //             return;
-    //         }
-    //     }
-    // }
     }
 }
 
@@ -1207,9 +1075,18 @@ export function WebGPUCmdFuncCreateShader (device: WebGPUDevice, gpuShader: IWeb
         }
 
         const useWGSL = false;
-        const sourceCode = `#version 310 es\n${gpuStage.source}`;
+        const sourceCode = `#version 450\n${gpuStage.source}`;
         const code = useWGSL ? sourceCode : glslang.compileGLSL(sourceCode, shaderTypeStr, true);
         const shader: GPUShaderModule = nativeDevice?.createShaderModule({ code });
+        // shader.compilationInfo().then((compileInfo: GPUCompilationInfo) => {
+        //     compileInfo.messages.forEach((info) => {
+        //         console.log(info.lineNum, info.linePos, info.type, info.message);
+        //     });
+        // }).catch((compileInfo: GPUCompilationInfo) => {
+        //     compileInfo.messages.forEach((info) => {
+        //         console.log(info.lineNum, info.linePos, info.type, info.message);
+        //     });
+        // });
         const shaderStage: GPUProgrammableStageDescriptor = {
             module: shader,
             entryPoint: 'main',
@@ -1277,189 +1154,189 @@ export function WebGPUCmdFuncCreateShader (device: WebGPUDevice, gpuShader: IWeb
     // }
 
     // parse inputs
-    const activeAttribCount = gl.getProgramParameter(gpuShader.glProgram, gl.ACTIVE_ATTRIBUTES);
-    gpuShader.glInputs = new Array<IWebGPUGPUInput>(activeAttribCount);
+    // const activeAttribCount = gl.getProgramParameter(gpuShader.glProgram, gl.ACTIVE_ATTRIBUTES);
+    // gpuShader.glInputs = new Array<IWebGPUGPUInput>(activeAttribCount);
 
-    for (let i = 0; i < activeAttribCount; ++i) {
-        const attribInfo = gl.getActiveAttrib(gpuShader.glProgram, i);
-        if (attribInfo) {
-            let varName: string;
-            const nameOffset = attribInfo.name.indexOf('[');
-            if (nameOffset !== -1) {
-                varName = attribInfo.name.substr(0, nameOffset);
-            } else {
-                varName = attribInfo.name;
-            }
+    // for (let i = 0; i < activeAttribCount; ++i) {
+    //     const attribInfo = gl.getActiveAttrib(gpuShader.glProgram, i);
+    //     if (attribInfo) {
+    //         let varName: string;
+    //         const nameOffset = attribInfo.name.indexOf('[');
+    //         if (nameOffset !== -1) {
+    //             varName = attribInfo.name.substr(0, nameOffset);
+    //         } else {
+    //             varName = attribInfo.name;
+    //         }
 
-            const glLoc = gl.getAttribLocation(gpuShader.glProgram, varName);
-            const type = WebGLTypeToGFXType(attribInfo.type, gl);
-            const stride = WebGLGetTypeSize(attribInfo.type, gl);
+    //         const glLoc = gl.getAttribLocation(gpuShader.glProgram, varName);
+    //         const type = WebGLTypeToGFXType(attribInfo.type, gl);
+    //         const stride = WebGLGetTypeSize(attribInfo.type, gl);
 
-            gpuShader.glInputs[i] = {
-                name: varName,
-                type,
-                stride,
-                count: attribInfo.size,
-                size: stride * attribInfo.size,
+    //         gpuShader.glInputs[i] = {
+    //             name: varName,
+    //             type,
+    //             stride,
+    //             count: attribInfo.size,
+    //             size: stride * attribInfo.size,
 
-                glType: attribInfo.type,
-                glLoc,
-            };
-        }
-    }
+    //             glType: attribInfo.type,
+    //             glLoc,
+    //         };
+    //     }
+    // }
 
-    // create uniform blocks
-    const activeBlockCount = gl.getProgramParameter(gpuShader.glProgram, gl.ACTIVE_UNIFORM_BLOCKS);
-    let blockName: string;
-    let blockIdx: number;
-    let blockSize: number;
-    let block: UniformBlock | null;
+    // // create uniform blocks
+    // const activeBlockCount = gl.getProgramParameter(gpuShader.glProgram, gl.ACTIVE_UNIFORM_BLOCKS);
+    // let blockName: string;
+    // let blockIdx: number;
+    // let blockSize: number;
+    // let block: UniformBlock | null;
 
-    if (activeBlockCount) {
-        gpuShader.glBlocks = new Array<IWebGPUGPUUniformBlock>(activeBlockCount);
+    // if (activeBlockCount) {
+    //     gpuShader.glBlocks = new Array<IWebGPUGPUUniformBlock>(activeBlockCount);
 
-        for (let b = 0; b < activeBlockCount; ++b) {
-            blockName = gl.getActiveUniformBlockName(gpuShader.glProgram, b)!;
-            const nameOffset = blockName.indexOf('[');
-            if (nameOffset !== -1) {
-                blockName = blockName.substr(0, nameOffset);
-            }
+    //     for (let b = 0; b < activeBlockCount; ++b) {
+    //         blockName = gl.getActiveUniformBlockName(gpuShader.glProgram, b)!;
+    //         const nameOffset = blockName.indexOf('[');
+    //         if (nameOffset !== -1) {
+    //             blockName = blockName.substr(0, nameOffset);
+    //         }
 
-            // blockIdx = gl.getUniformBlockIndex(gpuShader.glProgram, blockName);
-            block = null;
-            for (let k = 0; k < gpuShader.blocks.length; k++) {
-                if (gpuShader.blocks[k].name === blockName) {
-                    block = gpuShader.blocks[k];
-                    break;
-                }
-            }
+    //         // blockIdx = gl.getUniformBlockIndex(gpuShader.glProgram, blockName);
+    //         block = null;
+    //         for (let k = 0; k < gpuShader.blocks.length; k++) {
+    //             if (gpuShader.blocks[k].name === blockName) {
+    //                 block = gpuShader.blocks[k];
+    //                 break;
+    //             }
+    //         }
 
-            if (!block) {
-                error(`Block '${blockName}' does not bound`);
-            } else {
-                // blockIdx = gl.getUniformBlockIndex(gpuShader.glProgram, blockName);
-                blockIdx = b;
-                blockSize = gl.getActiveUniformBlockParameter(gpuShader.glProgram, blockIdx, gl.UNIFORM_BLOCK_DATA_SIZE);
-                const glBinding = block.binding + (device.bindingMappingInfo.bufferOffsets[block.set] || 0);
+    //         if (!block) {
+    //             error(`Block '${blockName}' does not bound`);
+    //         } else {
+    //             // blockIdx = gl.getUniformBlockIndex(gpuShader.glProgram, blockName);
+    //             blockIdx = b;
+    //             blockSize = gl.getActiveUniformBlockParameter(gpuShader.glProgram, blockIdx, gl.UNIFORM_BLOCK_DATA_SIZE);
+    //             const glBinding = block.binding + (device.bindingMappingInfo.bufferOffsets[block.set] || 0);
 
-                gl.uniformBlockBinding(gpuShader.glProgram, blockIdx, glBinding);
+    //             gl.uniformBlockBinding(gpuShader.glProgram, blockIdx, glBinding);
 
-                gpuShader.glBlocks[b] = {
-                    set: block.set,
-                    binding: block.binding,
-                    idx: blockIdx,
-                    name: blockName,
-                    size: blockSize,
-                    glBinding,
-                };
-            }
-        }
-    }
+    //             gpuShader.glBlocks[b] = {
+    //                 set: block.set,
+    //                 binding: block.binding,
+    //                 idx: blockIdx,
+    //                 name: blockName,
+    //                 size: blockSize,
+    //                 glBinding,
+    //             };
+    //         }
+    //     }
+    // }
 
-    // create uniform samplers
-    if (gpuShader.samplers.length > 0) {
-        gpuShader.glSamplers = new Array<IWebGPUGPUUniformSampler>(gpuShader.samplers.length);
+    // // create uniform samplers
+    // if (gpuShader.samplers.length > 0) {
+    //     gpuShader.glSamplers = new Array<IWebGPUGPUUniformSampler>(gpuShader.samplers.length);
 
-        for (let i = 0; i < gpuShader.samplers.length; ++i) {
-            const sampler = gpuShader.samplers[i];
-            gpuShader.glSamplers[i] = {
-                set: sampler.set,
-                binding: sampler.binding,
-                name: sampler.name,
-                type: sampler.type,
-                count: sampler.count,
-                units: [],
-                glUnits: null!,
-                glType: GFXTypeToWebGLType(sampler.type, gl),
-                glLoc: null!,
-            };
-        }
-    }
+    //     for (let i = 0; i < gpuShader.samplers.length; ++i) {
+    //         const sampler = gpuShader.samplers[i];
+    //         gpuShader.glSamplers[i] = {
+    //             set: sampler.set,
+    //             binding: sampler.binding,
+    //             name: sampler.name,
+    //             type: sampler.type,
+    //             count: sampler.count,
+    //             units: [],
+    //             glUnits: null!,
+    //             glType: GFXTypeToWebGLType(sampler.type, gl),
+    //             glLoc: null!,
+    //         };
+    //     }
+    // }
 
-    // texture unit index mapping optimization
-    const glActiveSamplers: IWebGPUGPUUniformSampler[] = [];
-    const glActiveSamplerLocations: WebGLUniformLocation[] = [];
-    const bindingMappingInfo = device.bindingMappingInfo;
-    const texUnitCacheMap = device.stateCache.texUnitCacheMap;
+    // // texture unit index mapping optimization
+    // const glActiveSamplers: IWebGPUGPUUniformSampler[] = [];
+    // const glActiveSamplerLocations: WebGLUniformLocation[] = [];
+    // const bindingMappingInfo = device.bindingMappingInfo;
+    // const texUnitCacheMap = device.stateCache.texUnitCacheMap;
 
-    let flexibleSetBaseOffset = 0;
-    for (let i = 0; i < gpuShader.blocks.length; ++i) {
-        if (gpuShader.blocks[i].set === bindingMappingInfo.flexibleSet) {
-            flexibleSetBaseOffset++;
-        }
-    }
+    // let flexibleSetBaseOffset = 0;
+    // for (let i = 0; i < gpuShader.blocks.length; ++i) {
+    //     if (gpuShader.blocks[i].set === bindingMappingInfo.flexibleSet) {
+    //         flexibleSetBaseOffset++;
+    //     }
+    // }
 
-    let arrayOffset = 0;
-    for (let i = 0; i < gpuShader.samplers.length; ++i) {
-        const sampler = gpuShader.samplers[i];
-        const glLoc = gl.getUniformLocation(gpuShader.glProgram, sampler.name);
-        if (glLoc) {
-            glActiveSamplers.push(gpuShader.glSamplers[i]);
-            glActiveSamplerLocations.push(glLoc);
-        }
-        if (texUnitCacheMap[sampler.name] === undefined) {
-            let binding = sampler.binding + bindingMappingInfo.samplerOffsets[sampler.set] + arrayOffset;
-            if (sampler.set === bindingMappingInfo.flexibleSet) binding -= flexibleSetBaseOffset;
-            texUnitCacheMap[sampler.name] = binding % device.maxTextureUnits;
-            arrayOffset += sampler.count - 1;
-        }
-    }
+    // let arrayOffset = 0;
+    // for (let i = 0; i < gpuShader.samplers.length; ++i) {
+    //     const sampler = gpuShader.samplers[i];
+    //     const glLoc = gl.getUniformLocation(gpuShader.glProgram, sampler.name);
+    //     if (glLoc) {
+    //         glActiveSamplers.push(gpuShader.glSamplers[i]);
+    //         glActiveSamplerLocations.push(glLoc);
+    //     }
+    //     if (texUnitCacheMap[sampler.name] === undefined) {
+    //         let binding = sampler.binding + bindingMappingInfo.samplerOffsets[sampler.set] + arrayOffset;
+    //         if (sampler.set === bindingMappingInfo.flexibleSet) binding -= flexibleSetBaseOffset;
+    //         texUnitCacheMap[sampler.name] = binding % device.maxTextureUnits;
+    //         arrayOffset += sampler.count - 1;
+    //     }
+    // }
 
-    if (glActiveSamplers.length) {
-        const usedTexUnits: boolean[] = [];
-        // try to reuse existing mappings first
-        for (let i = 0; i < glActiveSamplers.length; ++i) {
-            const glSampler = glActiveSamplers[i];
+    // if (glActiveSamplers.length) {
+    //     const usedTexUnits: boolean[] = [];
+    //     // try to reuse existing mappings first
+    //     for (let i = 0; i < glActiveSamplers.length; ++i) {
+    //         const glSampler = glActiveSamplers[i];
 
-            let cachedUnit = texUnitCacheMap[glSampler.name];
-            if (cachedUnit !== undefined) {
-                glSampler.glLoc = glActiveSamplerLocations[i];
-                for (let t = 0; t < glSampler.count; ++t) {
-                    while (usedTexUnits[cachedUnit]) {
-                        cachedUnit = (cachedUnit + 1) % device.maxTextureUnits;
-                    }
-                    glSampler.units.push(cachedUnit);
-                    usedTexUnits[cachedUnit] = true;
-                }
-            }
-        }
-        // fill in the rest sequencially
-        let unitIdx = 0;
-        for (let i = 0; i < glActiveSamplers.length; ++i) {
-            const glSampler = glActiveSamplers[i];
+    //         let cachedUnit = texUnitCacheMap[glSampler.name];
+    //         if (cachedUnit !== undefined) {
+    //             glSampler.glLoc = glActiveSamplerLocations[i];
+    //             for (let t = 0; t < glSampler.count; ++t) {
+    //                 while (usedTexUnits[cachedUnit]) {
+    //                     cachedUnit = (cachedUnit + 1) % device.maxTextureUnits;
+    //                 }
+    //                 glSampler.units.push(cachedUnit);
+    //                 usedTexUnits[cachedUnit] = true;
+    //             }
+    //         }
+    //     }
+    //     // fill in the rest sequencially
+    //     let unitIdx = 0;
+    //     for (let i = 0; i < glActiveSamplers.length; ++i) {
+    //         const glSampler = glActiveSamplers[i];
 
-            if (!glSampler.glLoc) {
-                glSampler.glLoc = glActiveSamplerLocations[i];
-                while (usedTexUnits[unitIdx]) unitIdx++;
-                for (let t = 0; t < glSampler.count; ++t) {
-                    while (usedTexUnits[unitIdx]) {
-                        unitIdx = (unitIdx + 1) % device.maxTextureUnits;
-                    }
-                    if (texUnitCacheMap[glSampler.name] === undefined) {
-                        texUnitCacheMap[glSampler.name] = unitIdx;
-                    }
-                    glSampler.units.push(unitIdx);
-                    usedTexUnits[unitIdx] = true;
-                }
-            }
-        }
+    //         if (!glSampler.glLoc) {
+    //             glSampler.glLoc = glActiveSamplerLocations[i];
+    //             while (usedTexUnits[unitIdx]) unitIdx++;
+    //             for (let t = 0; t < glSampler.count; ++t) {
+    //                 while (usedTexUnits[unitIdx]) {
+    //                     unitIdx = (unitIdx + 1) % device.maxTextureUnits;
+    //                 }
+    //                 if (texUnitCacheMap[glSampler.name] === undefined) {
+    //                     texUnitCacheMap[glSampler.name] = unitIdx;
+    //                 }
+    //                 glSampler.units.push(unitIdx);
+    //                 usedTexUnits[unitIdx] = true;
+    //             }
+    //         }
+    //     }
 
-        if (device.stateCache.glProgram !== gpuShader.glProgram) {
-            gl.useProgram(gpuShader.glProgram);
-        }
+    //     if (device.stateCache.glProgram !== gpuShader.glProgram) {
+    //         gl.useProgram(gpuShader.glProgram);
+    //     }
 
-        for (let k = 0; k < glActiveSamplers.length; k++) {
-            const glSampler = glActiveSamplers[k];
-            glSampler.glUnits = new Int32Array(glSampler.units);
-            gl.uniform1iv(glSampler.glLoc, glSampler.glUnits);
-        }
+    //     for (let k = 0; k < glActiveSamplers.length; k++) {
+    //         const glSampler = glActiveSamplers[k];
+    //         glSampler.glUnits = new Int32Array(glSampler.units);
+    //         gl.uniform1iv(glSampler.glLoc, glSampler.glUnits);
+    //     }
 
-        if (device.stateCache.glProgram !== gpuShader.glProgram) {
-            gl.useProgram(device.stateCache.glProgram);
-        }
-    }
+    //     if (device.stateCache.glProgram !== gpuShader.glProgram) {
+    //         gl.useProgram(device.stateCache.glProgram);
+    //     }
+    // }
 
-    gpuShader.glSamplers = glActiveSamplers;
+    // gpuShader.glSamplers = glActiveSamplers;
 }
 
 export function WebGPUCmdFuncDestroyShader (device: WebGPUDevice, gpuShader: IWebGPUGPUShader) {
@@ -2618,27 +2495,38 @@ export function WebGPUCmdFuncCopyTexImagesToTexture (
     // all image share the same & largest buffer
 
     const pixelSize = FormatInfos[gpuTexture.format].size;
-    const nativeBuffer = nativeDevice.createBuffer({
-        size: maxElementOfImageArray(regions) * pixelSize,
-        usage: GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
-        mappedAtCreation: true,
-    });
+    // const nativeBuffer = nativeDevice.createBuffer({
+    //     size: maxElementOfImageArray(regions) * pixelSize,
+    //     usage: GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+    //     mappedAtCreation: true,
+    // });
 
     for (let i = 0; i < regions.length; i++) {
         const imageData = (texImages[i] as HTMLCanvasElement).getContext('2d')?.getImageData(0, 0, texImages[i].width, texImages[i].height);
-        new Uint8ClampedArray(nativeBuffer.getMappedRange(
-            0,
-            imageData!.data.byteLength,
-        )).set(imageData!.data);
-        nativeBuffer.unmap();
+        // new Uint8ClampedArray(nativeBuffer.getMappedRange(
+        //     0,
+        //     imageData!.data.byteLength,
+        // )).set(imageData!.data);
+        // nativeBuffer.unmap();
 
-        const commandEncoder = nativeDevice.createCommandEncoder();
-        commandEncoder.copyBufferToTexture(
-            { buffer: nativeBuffer, bytesPerRow: pixelSize },
-            { texture: gpuTexture.glTexture! },
-            [regions[i].texExtent.width, regions[i].texExtent.height, regions[i].texExtent.depth],
-        );
-        nativeDevice.defaultQueue.submit([commandEncoder.finish()]);
+        const texDataLayout = {
+            bytesPerRow: pixelSize * texImages[i].width,
+        };
+        const textureView:GPUTextureCopyView = {
+            texture: gpuTexture.glTexture!,
+        };
+        nativeDevice.defaultQueue.writeTexture(textureView,
+            imageData?.data.buffer as ArrayBuffer, texDataLayout,
+            [regions[i].texExtent.width, regions[i].texExtent.height, regions[i].texExtent.depth]);
+        // const commandEncoder = nativeDevice.createCommandEncoder();
+        // commandEncoder.copyBufferToTexture(
+        //     { buffer: nativeBuffer, bytesPerRow: Math.floor((pixelSize + 255) / 256) * 256 },
+        //     { texture: gpuTexture.glTexture! },
+        //     [regions[i].texExtent.width, regions[i].texExtent.height, regions[i].texExtent.depth],
+        // );
+
+        // const cmdBuffer = commandEncoder.finish();
+        // nativeDevice.defaultQueue.submit([cmdBuffer]);
         // 👇async way in initial stage may cause issues
         // createImageBitmap(texImages[i]).then( (img:ImageBitmap) => {
         //    nativeDevice.defaultQueue.copyImageBitmapToTexture(
@@ -2648,7 +2536,7 @@ export function WebGPUCmdFuncCopyTexImagesToTexture (
         // } );
     }
 
-    nativeBuffer.destroy();
+    // nativeBuffer.destroy();
 
     // blitCommandEncoder.copyBufferToTexture(,)
 
@@ -2708,7 +2596,7 @@ export function WebGPUCmdFuncCopyBuffersToTexture (
         const texView = {} as GPUTextureCopyView;
         texView.texture = gpuTexture.glTexture!;
         const texDataLayout = {} as GPUTextureDataLayout;
-        texDataLayout.bytesPerRow = FormatInfos[gpuTexture.format].size;
+        texDataLayout.bytesPerRow = FormatInfos[gpuTexture.format].size * regions[i].texExtent.width;
         nativeDevice.defaultQueue.writeTexture(texView, buffers[i], texDataLayout, regions[i].texExtent);
     }
 

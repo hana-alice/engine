@@ -11,7 +11,6 @@ export class WebGPUFramebuffer extends Framebuffer {
     }
 
     private _gpuFramebuffer: IWebGPUGPUFramebuffer | null = null;
-
     public initialize (info: FramebufferInfo): boolean {
         this._renderPass = info.renderPass;
         this._colorTextures = info.colorTextures || [];
@@ -27,10 +26,17 @@ export class WebGPUFramebuffer extends Framebuffer {
         }
 
         const gpuColorTextures: IWebGPUGPUTexture[] = [];
-        for (let i = 0; i < info.colorTextures.length; i++) {
-            const colorTexture = info.colorTextures[i];
-            if (colorTexture) {
-                gpuColorTextures.push((colorTexture as WebGPUTexture).gpuTexture);
+        let isOffscreen = false;
+        // onscreen
+        if (info.colorTextures.every((tex) => tex === null)) {
+            isOffscreen = false;
+        } else { // offscreen
+            isOffscreen = true;
+            for (let i = 0; i < info.colorTextures.length; i++) {
+                const colorTexture = info.colorTextures[i];
+                if (colorTexture) {
+                    gpuColorTextures.push((colorTexture as WebGPUTexture).gpuTexture);
+                }
             }
         }
 
@@ -44,16 +50,17 @@ export class WebGPUFramebuffer extends Framebuffer {
             gpuColorTextures,
             gpuDepthStencilTexture,
             glFramebuffer: null,
+            isOffscreen,
         };
 
-        WebGPUCmdFuncCreateFramebuffer(this._device as WebGPUDevice, this._gpuFramebuffer);
+        // WebGPUCmdFuncCreateFramebuffer(this._device as WebGPUDevice, this._gpuFramebuffer);
 
         return true;
     }
 
     public destroy () {
         if (this._gpuFramebuffer) {
-            WebGPUCmdFuncDestroyFramebuffer(this._device as WebGPUDevice, this._gpuFramebuffer);
+            // WebGPUCmdFuncDestroyFramebuffer(this._device as WebGPUDevice, this._gpuFramebuffer);
             this._gpuFramebuffer = null;
         }
     }
