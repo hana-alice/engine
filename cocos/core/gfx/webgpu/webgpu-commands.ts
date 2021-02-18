@@ -2100,6 +2100,7 @@ export function WebGPUCmdFuncExecuteCmds (device: WebGPUDevice, cmdPackage: WebG
             WebGPUCmdFuncCopyBuffersToTexture(device, cmd5.buffers, cmd5.gpuTexture as IWebGPUGPUTexture, cmd5.regions);
             break;
         }
+        default: break;
         } // switch
     } // for
 }

@@ -59,7 +59,7 @@ export class WebGPUPipelineState extends PipelineState {
         const shaderStages = (this._shader as WebGPUShader).gpuShader.gpuStages;
         for (let i = 0; i < shaderStages.length; i++) {
             if (shaderStages[i].type === ShaderStageFlagBit.VERTEX) { renderPplDesc.vertexStage = shaderStages[i].glShader!; }
-            if (shaderStages[i].type === ShaderStageFlagBit.COMPUTE) { renderPplDesc.fragmentStage = shaderStages[i].glShader!; }
+            if (shaderStages[i].type === ShaderStageFlagBit.FRAGMENT) { renderPplDesc.fragmentStage = shaderStages[i].glShader!; }
         }
 
         // primitive
