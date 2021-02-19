@@ -6,6 +6,7 @@ import { WebGPUTexture } from './webgpu-texture';
 import { WebGPUDescriptorSetLayout } from './webgpu-descriptor-set-layout';
 import { WebGPUDevice } from './webgpu-device';
 import { DescriptorType } from '../define';
+import { DescriptorSetLayoutBinding } from '../descriptor-set-layout';
 
 export class WebGPUDescriptorSet extends DescriptorSet {
     get gpuDescriptorSet (): IWebGPUGPUDescriptorSet {
@@ -52,56 +53,69 @@ export class WebGPUDescriptorSet extends DescriptorSet {
     public update () {
         if (this._isDirty && this._gpuDescriptorSet) {
             const descriptors = this._gpuDescriptorSet.gpuDescriptors;
-            if (descriptors) {
-                let count = 0;
-                for (let i = 0; i < descriptors.length; ++i) {
-                    const binding = (this._layout as WebGPUDescriptorSetLayout).gpuDescriptorSetLayout.bindings[i];
-                    if (descriptors[i].type & DESCRIPTOR_BUFFER_TYPE) {
-                        if (this._buffers[i]) {
-                            descriptors[i].gpuBuffer = (this._buffers[i] as WebGPUBuffer).gpuBuffer;
-                            const nativeBuffer = descriptors[i].gpuBuffer?.glBuffer;
+            const layout = this._layout as WebGPUDescriptorSetLayout;
+            /* --------------FIXME: for combined tex/sampler shader--------------*/
+            let samplerCount = 0;
+            for (let i = 0; i < this._samplers.length; i++) {
+                if (this._samplers[i]) { samplerCount++; }
+            }
+            /*------------------------------------------------------------------*/
+            let count = 0;
+            for (let i = 0; i < descriptors.length; ++i) {
+                const binding = (this._layout as WebGPUDescriptorSetLayout).gpuDescriptorSetLayout.bindings[i];
+                if (descriptors[i].type & DESCRIPTOR_BUFFER_TYPE) {
+                    if (this._buffers[i]) {
+                        descriptors[i].gpuBuffer = (this._buffers[i] as WebGPUBuffer).gpuBuffer;
+                        const nativeBuffer = descriptors[i].gpuBuffer?.glBuffer;
 
-                            const bindGrpEntry: GPUBindGroupEntry = {
-                                binding: binding.binding,
-                                resource: {
-                                    buffer: nativeBuffer!,
-                                    offset: descriptors[i].gpuBuffer?.glOffset,
-                                    size: descriptors[i].gpuBuffer?.size,
-                                },
-                            };
+                        const bindGrpEntry: GPUBindGroupEntry = {
+                            binding: binding.binding,
+                            resource: {
+                                buffer: nativeBuffer!,
+                                offset: descriptors[i].gpuBuffer?.glOffset,
+                                size: descriptors[i].gpuBuffer?.size,
+                            },
+                        };
+                        layout.updateBindGroupLayout(count, binding, this._buffers[i], null, null);
+                        this._bindGroupEntries[count++] = bindGrpEntry;
+                    }
+                } else if (descriptors[i].type & DESCRIPTOR_SAMPLER_TYPE) {
+                    if (this._samplers[i]) {
+                        descriptors[i].gpuSampler = (this._samplers[i] as WebGPUSampler).gpuSampler;
+                        const bindGrpEntry: GPUBindGroupEntry = {
+                            binding: binding.binding,
+                            resource: descriptors[i].gpuSampler?.glSampler as GPUSampler,
+                        };
+                        layout.updateBindGroupLayout(count, binding, null, null, this._samplers[i]);
+                        this._bindGroupEntries[count++] = bindGrpEntry;
+                    }
 
-                            this._bindGroupEntries[count++] = bindGrpEntry;
-                        }
-                    } else if (descriptors[i].type & DESCRIPTOR_SAMPLER_TYPE) {
-                        if (this._textures[i]) {
-                            descriptors[i].gpuTexture = (this._textures[i] as WebGPUTexture).gpuTexture;
+                    if (this._textures[i]) {
+                        descriptors[i].gpuTexture = (this._textures[i] as WebGPUTexture).gpuTexture;
 
-                            const bindGrpEntry: GPUBindGroupEntry = {
-                                binding: binding.binding,
-                                resource: descriptors[i].gpuTexture?.glTexture?.createView() as GPUTextureView,
-                            };
+                        const bindGrpEntry: GPUBindGroupEntry = {
+                            binding: binding.binding + 20,
+                            resource: descriptors[i].gpuTexture?.glTexture?.createView() as GPUTextureView,
+                        };
 
-                            this._bindGroupEntries[count++] = bindGrpEntry;
-                        }
-                        if (this._samplers[i]) {
-                            descriptors[i].gpuSampler = (this._samplers[i] as WebGPUSampler).gpuSampler;
-                            const bindGrpEntry: GPUBindGroupEntry = {
-                                binding: binding.binding,
-                                resource: descriptors[i].gpuSampler?.glSampler as GPUSampler,
-                            };
-                            this._bindGroupEntries[count++] = bindGrpEntry;
-                        }
+                        const newBinding = {} as DescriptorSetLayoutBinding;
+                        Object.assign(newBinding, binding);
+                        newBinding.binding += 20;
+                        layout.updateBindGroupLayout(count, newBinding, null, this._textures[i], null);
+
+                        this._bindGroupEntries[count++] = bindGrpEntry;
                     }
                 }
-                this._isDirty = false;
-                const nativeDevice = (this._device as WebGPUDevice).nativeDevice();
-                const bindGroup = nativeDevice?.createBindGroup({
-                    layout: (this._layout as WebGPUDescriptorSetLayout).gpuDescriptorSetLayout.bindGroupLayout,
-                    entries: this._bindGroupEntries,
-                });
-
-                this._gpuDescriptorSet.bindGroup = bindGroup!;
             }
+            layout.prepare();
+            this._isDirty = false;
+            const nativeDevice = (this._device as WebGPUDevice).nativeDevice();
+            const bindGroup = nativeDevice?.createBindGroup({
+                layout: (this._layout as WebGPUDescriptorSetLayout).gpuDescriptorSetLayout.bindGroupLayout!,
+                entries: this._bindGroupEntries,
+            });
+
+            this._gpuDescriptorSet.bindGroup = bindGroup!;
         }
     }
 }

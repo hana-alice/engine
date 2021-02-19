@@ -19,18 +19,20 @@ export class WebGPUPipelineLayout extends PipelineLayout {
         let dynamicOffsetCount = 0;
         for (let i = 0; i < this._setLayouts.length; i++) {
             const setLayout = this._setLayouts[i] as WebGPUDescriptorSetLayout;
-            const dynamicBindings = setLayout.gpuDescriptorSetLayout.dynamicBindings;
-            const indices = Array(setLayout.bindingIndices.length).fill(-1);
-            for (let j = 0; j < dynamicBindings.length; j++) {
-                const binding = dynamicBindings[j];
-                if (indices[binding] < 0) indices[binding] = dynamicOffsetCount + j;
+            if (setLayout.gpuDescriptorSetLayout.bindGroupLayout) {
+                const dynamicBindings = setLayout.gpuDescriptorSetLayout.dynamicBindings;
+                const indices = Array(setLayout.bindingIndices.length).fill(-1);
+                for (let j = 0; j < dynamicBindings.length; j++) {
+                    const binding = dynamicBindings[j];
+                    if (indices[binding] < 0) indices[binding] = dynamicOffsetCount + j;
+                }
+
+                gpuSetLayouts.push(setLayout.gpuDescriptorSetLayout);
+                dynamicOffsetIndices.push(indices);
+                dynamicOffsetCount += dynamicBindings.length;
+
+                bindGrpLayouts.push(setLayout.gpuDescriptorSetLayout.bindGroupLayout);
             }
-
-            gpuSetLayouts.push(setLayout.gpuDescriptorSetLayout);
-            dynamicOffsetIndices.push(indices);
-            dynamicOffsetCount += dynamicBindings.length;
-
-            bindGrpLayouts.push(setLayout.gpuDescriptorSetLayout.bindGroupLayout);
         }
 
         const pipelineLayout = nativeDevice?.createPipelineLayout({ bindGroupLayouts: bindGrpLayouts }) as GPUPipelineLayout;

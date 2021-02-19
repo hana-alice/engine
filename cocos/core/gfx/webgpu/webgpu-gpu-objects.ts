@@ -179,7 +179,7 @@ export interface IWebGPUGPUDescriptorSetLayout {
     dynamicBindings: number[];
     descriptorIndices: number[];
     descriptorCount: number;
-    bindGroupLayout: GPUBindGroupLayout;
+    bindGroupLayout: GPUBindGroupLayout | null;
 }
 
 export interface IWebGPUGPUPipelineLayout {

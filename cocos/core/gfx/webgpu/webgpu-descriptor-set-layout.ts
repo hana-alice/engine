@@ -1,18 +1,29 @@
-import { DescriptorSetLayout, DescriptorSetLayoutInfo, DESCRIPTOR_DYNAMIC_TYPE } from '../descriptor-set-layout';
+import { DescriptorSetLayout, DescriptorSetLayoutInfo, DESCRIPTOR_DYNAMIC_TYPE, DescriptorSetLayoutBinding } from '../descriptor-set-layout';
 import { IWebGPUGPUDescriptorSetLayout } from './webgpu-gpu-objects';
 import { WebGPUDevice } from './webgpu-device';
 import { GLStageToWebGPUStage, GLDescTypeToWebGPUDescType } from './webgpu-commands';
-import { DescriptorType } from '../define';
+import { DescriptorType, TextureUsage, TextureUsageBit } from '../define';
+import { Buffer } from '../buffer';
+import { Sampler } from '../sampler';
+import { Texture } from '../texture';
 
+function texUsageToTexType (usage: TextureUsage): GPUBindingType {
+    switch (usage) {
+    case TextureUsageBit.SAMPLED: return 'sampled-texture';
+    case TextureUsageBit.INPUT_ATTACHMENT: return 'readonly-storage-texture';
+    case TextureUsageBit.DEPTH_STENCIL_ATTACHMENT: return 'sampled-texture';
+    case TextureUsageBit.COLOR_ATTACHMENT: return 'sampled-texture';
+    default: return 'sampled-texture';
+    }
+}
 export class WebGPUDescriptorSetLayout extends DescriptorSetLayout {
     get gpuDescriptorSetLayout () { return this._gpuDescriptorSetLayout!; }
 
     private _gpuDescriptorSetLayout: IWebGPUGPUDescriptorSetLayout | null = null;
+    private _bindGrpLayoutEntries: GPUBindGroupLayoutEntry[] = [];
 
     public initialize (info: DescriptorSetLayoutInfo) {
         Array.prototype.push.apply(this._bindings, info.bindings);
-
-        const nativeDevice = (this._device as WebGPUDevice).nativeDevice();
 
         let descriptorCount = 0; let maxBinding = -1;
         const flattenedIndices: number[] = [];
@@ -25,7 +36,6 @@ export class WebGPUDescriptorSetLayout extends DescriptorSetLayout {
 
         this._bindingIndices = Array(maxBinding + 1).fill(-1);
         const descriptorIndices = this._descriptorIndices = Array(maxBinding + 1).fill(-1);
-        const bindGrpLayoutEntries: GPUBindGroupLayoutEntry[] = [];
         for (let i = 0; i < this._bindings.length; i++) {
             const binding = this._bindings[i];
             this._bindingIndices[binding.binding] = i;
@@ -36,11 +46,11 @@ export class WebGPUDescriptorSetLayout extends DescriptorSetLayout {
                     visibility: GLStageToWebGPUStage(binding.stageFlags),
                     type: GLDescTypeToWebGPUDescType(binding.descriptorType)!,
                 };
-                bindGrpLayoutEntries.push(grpLayoutEntry);
+                // this._bindGrpLayoutEntries.push(grpLayoutEntry);
             }
         }
 
-        const bindGrpLayout = nativeDevice?.createBindGroupLayout({ entries: bindGrpLayoutEntries });
+        // const bindGrpLayout = nativeDevice?.createBindGroupLayout({ entries: bindGrpLayoutEntries });
 
         const dynamicBindings: number[] = [];
         for (let i = 0; i < this._bindings.length; i++) {
@@ -57,10 +67,40 @@ export class WebGPUDescriptorSetLayout extends DescriptorSetLayout {
             dynamicBindings,
             descriptorIndices,
             descriptorCount,
-            bindGroupLayout: bindGrpLayout!,
+            bindGroupLayout: null,
         };
 
         return true;
+    }
+
+    public updateBindGroupLayout (index: number, binding: DescriptorSetLayoutBinding, buffer: Buffer | null, texture: Texture | null, sampler: Sampler | null) {
+        if (buffer) {
+            this._bindGrpLayoutEntries[index] = {
+                binding: binding.binding,
+                visibility: GLStageToWebGPUStage(binding.stageFlags),
+                type: GLDescTypeToWebGPUDescType(binding.descriptorType)!,
+            };
+        }
+        if (sampler) {
+            this._bindGrpLayoutEntries[index] = {
+                binding: binding.binding,
+                visibility: GLStageToWebGPUStage(binding.stageFlags),
+                type: GLDescTypeToWebGPUDescType(binding.descriptorType)!,
+            };
+        }
+        if (texture) {
+            this._bindGrpLayoutEntries[index] = {
+                binding: binding.binding,
+                visibility: GLStageToWebGPUStage(binding.stageFlags),
+                type: texUsageToTexType(texture.usage),
+            };
+        }
+    }
+
+    public prepare () {
+        const nativeDevice = (this._device as WebGPUDevice).nativeDevice();
+        const bindGrpLayout = nativeDevice?.createBindGroupLayout({ entries: this._bindGrpLayoutEntries });
+        this._gpuDescriptorSetLayout!.bindGroupLayout = bindGrpLayout!;
     }
 
     public destroy () {

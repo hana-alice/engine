@@ -938,6 +938,7 @@ export function WebGPUCmdFuncDestroyFramebuffer (device: WebGPUDevice, gpuFrameb
 function removeCombinedSamplerTexture (shaderSource: string) {
     const samplerTexturArr = shaderSource.match(/layout\(set = \d+, binding = \d+\) uniform sampler\w* \w+;/g);
     const count = samplerTexturArr?.length ? samplerTexturArr?.length : 0;
+
     let code = shaderSource;
     samplerTexturArr?.every((str) => {
         const textureName = str.match(/(?<=uniform sampler\w* )(\w+)(?=;)/g)!.toString();
@@ -947,7 +948,7 @@ function removeCombinedSamplerTexture (shaderSource: string) {
 
         const textureReg = /(?<=binding = )(\d+)(?=\))/g;
         const textureBindingStr = str.match(textureReg)!.toString();
-        const textureBinding = Number(textureBindingStr) + count;
+        const textureBinding = Number(textureBindingStr) + 20;
         let textureStr = str.replace(textureReg, textureBinding.toString());
         textureStr = textureStr.replace(/(?<=uniform )(sampler)(?=\w*)/g, 'texture');
 
