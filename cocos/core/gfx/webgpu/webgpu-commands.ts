@@ -106,141 +106,48 @@ export function GLDescTypeToWebGPUDescType (descType: DescriptorType) {
     }
 }
 
-export function GFXFormatToWebGLType (format: Format, gl: WebGL2RenderingContext): GLenum {
+export function GFXFormatToWGPUVertexFormat (format: Format) :GPUVertexFormat {
     switch (format) {
-    case Format.R8: return gl.UNSIGNED_BYTE;
-    case Format.R8SN: return gl.BYTE;
-    case Format.R8UI: return gl.UNSIGNED_BYTE;
-    case Format.R8I: return gl.BYTE;
-    case Format.R16F: return gl.HALF_FLOAT;
-    case Format.R16UI: return gl.UNSIGNED_SHORT;
-    case Format.R16I: return gl.SHORT;
-    case Format.R32F: return gl.FLOAT;
-    case Format.R32UI: return gl.UNSIGNED_INT;
-    case Format.R32I: return gl.INT;
+    case Format.R32F: return 'float';
+    case Format.R32UI: return 'uint';
+    case Format.R32I: return 'int';
 
-    case Format.RG8: return gl.UNSIGNED_BYTE;
-    case Format.RG8SN: return gl.BYTE;
-    case Format.RG8UI: return gl.UNSIGNED_BYTE;
-    case Format.RG8I: return gl.BYTE;
-    case Format.RG16F: return gl.HALF_FLOAT;
-    case Format.RG16UI: return gl.UNSIGNED_SHORT;
-    case Format.RG16I: return gl.SHORT;
-    case Format.RG32F: return gl.FLOAT;
-    case Format.RG32UI: return gl.UNSIGNED_INT;
-    case Format.RG32I: return gl.INT;
+    case Format.RG8: return 'uchar2norm';
+    case Format.RG8SN: return 'char2norm';
+    case Format.RG8UI: return 'uchar2';
+    case Format.RG8I: return 'char2';
+    case Format.RG16F: return 'half2';
+    case Format.RG16UI: return 'ushort2';
+    case Format.RG16I: return 'short2';
+    case Format.RG32F: return 'float2';
+    case Format.RG32UI: return 'uint2';
+    case Format.RG32I: return 'int2';
 
-    case Format.RGB8: return gl.UNSIGNED_BYTE;
-    case Format.SRGB8: return gl.UNSIGNED_BYTE;
-    case Format.RGB8SN: return gl.BYTE;
-    case Format.RGB8UI: return gl.UNSIGNED_BYTE;
-    case Format.RGB8I: return gl.BYTE;
-    case Format.RGB16F: return gl.HALF_FLOAT;
-    case Format.RGB16UI: return gl.UNSIGNED_SHORT;
-    case Format.RGB16I: return gl.SHORT;
-    case Format.RGB32F: return gl.FLOAT;
-    case Format.RGB32UI: return gl.UNSIGNED_INT;
-    case Format.RGB32I: return gl.INT;
+    case Format.RGB32F: return 'float3';
+    case Format.RGB32UI: return 'uint3';
+    case Format.RGB32I: return 'int3';
 
-    case Format.BGRA8: return gl.UNSIGNED_BYTE;
-    case Format.RGBA8: return gl.UNSIGNED_BYTE;
-    case Format.SRGB8_A8: return gl.UNSIGNED_BYTE;
-    case Format.RGBA8SN: return gl.BYTE;
-    case Format.RGBA8UI: return gl.UNSIGNED_BYTE;
-    case Format.RGBA8I: return gl.BYTE;
-    case Format.RGBA16F: return gl.HALF_FLOAT;
-    case Format.RGBA16UI: return gl.UNSIGNED_SHORT;
-    case Format.RGBA16I: return gl.SHORT;
-    case Format.RGBA32F: return gl.FLOAT;
-    case Format.RGBA32UI: return gl.UNSIGNED_INT;
-    case Format.RGBA32I: return gl.INT;
-
-    case Format.R5G6B5: return gl.UNSIGNED_SHORT_5_6_5;
-    case Format.R11G11B10F: return gl.UNSIGNED_INT_10F_11F_11F_REV;
-    case Format.RGB5A1: return gl.UNSIGNED_SHORT_5_5_5_1;
-    case Format.RGBA4: return gl.UNSIGNED_SHORT_4_4_4_4;
-    case Format.RGB10A2: return gl.UNSIGNED_INT_2_10_10_10_REV;
-    case Format.RGB10A2UI: return gl.UNSIGNED_INT_2_10_10_10_REV;
-    case Format.RGB9E5: return gl.FLOAT;
-
-    case Format.D16: return gl.UNSIGNED_SHORT;
-    case Format.D16S8: return gl.UNSIGNED_INT_24_8; // no D16S8 support
-    case Format.D24: return gl.UNSIGNED_INT;
-    case Format.D24S8: return gl.UNSIGNED_INT_24_8;
-    case Format.D32F: return gl.FLOAT;
-    case Format.D32F_S8: return gl.FLOAT_32_UNSIGNED_INT_24_8_REV;
-
-    case Format.BC1: return gl.UNSIGNED_BYTE;
-    case Format.BC1_SRGB: return gl.UNSIGNED_BYTE;
-    case Format.BC2: return gl.UNSIGNED_BYTE;
-    case Format.BC2_SRGB: return gl.UNSIGNED_BYTE;
-    case Format.BC3: return gl.UNSIGNED_BYTE;
-    case Format.BC3_SRGB: return gl.UNSIGNED_BYTE;
-    case Format.BC4: return gl.UNSIGNED_BYTE;
-    case Format.BC4_SNORM: return gl.BYTE;
-    case Format.BC5: return gl.UNSIGNED_BYTE;
-    case Format.BC5_SNORM: return gl.BYTE;
-    case Format.BC6H_SF16: return gl.FLOAT;
-    case Format.BC6H_UF16: return gl.FLOAT;
-    case Format.BC7: return gl.UNSIGNED_BYTE;
-    case Format.BC7_SRGB: return gl.UNSIGNED_BYTE;
-
-    case Format.ETC_RGB8: return gl.UNSIGNED_BYTE;
-    case Format.ETC2_RGB8: return gl.UNSIGNED_BYTE;
-    case Format.ETC2_SRGB8: return gl.UNSIGNED_BYTE;
-    case Format.ETC2_RGB8_A1: return gl.UNSIGNED_BYTE;
-    case Format.ETC2_SRGB8_A1: return gl.UNSIGNED_BYTE;
-    case Format.ETC2_RGB8: return gl.UNSIGNED_BYTE;
-    case Format.ETC2_SRGB8: return gl.UNSIGNED_BYTE;
-    case Format.EAC_R11: return gl.UNSIGNED_BYTE;
-    case Format.EAC_R11SN: return gl.BYTE;
-    case Format.EAC_RG11: return gl.UNSIGNED_BYTE;
-    case Format.EAC_RG11SN: return gl.BYTE;
-
-    case Format.PVRTC_RGB2: return gl.UNSIGNED_BYTE;
-    case Format.PVRTC_RGBA2: return gl.UNSIGNED_BYTE;
-    case Format.PVRTC_RGB4: return gl.UNSIGNED_BYTE;
-    case Format.PVRTC_RGBA4: return gl.UNSIGNED_BYTE;
-    case Format.PVRTC2_2BPP: return gl.UNSIGNED_BYTE;
-    case Format.PVRTC2_4BPP: return gl.UNSIGNED_BYTE;
-
-    case Format.ASTC_RGBA_4x4:
-    case Format.ASTC_RGBA_5x4:
-    case Format.ASTC_RGBA_5x5:
-    case Format.ASTC_RGBA_6x5:
-    case Format.ASTC_RGBA_6x6:
-    case Format.ASTC_RGBA_8x5:
-    case Format.ASTC_RGBA_8x6:
-    case Format.ASTC_RGBA_8x8:
-    case Format.ASTC_RGBA_10x5:
-    case Format.ASTC_RGBA_10x6:
-    case Format.ASTC_RGBA_10x8:
-    case Format.ASTC_RGBA_10x10:
-    case Format.ASTC_RGBA_12x10:
-    case Format.ASTC_RGBA_12x12:
-    case Format.ASTC_SRGBA_4x4:
-    case Format.ASTC_SRGBA_5x4:
-    case Format.ASTC_SRGBA_5x5:
-    case Format.ASTC_SRGBA_6x5:
-    case Format.ASTC_SRGBA_6x6:
-    case Format.ASTC_SRGBA_8x5:
-    case Format.ASTC_SRGBA_8x6:
-    case Format.ASTC_SRGBA_8x8:
-    case Format.ASTC_SRGBA_10x5:
-    case Format.ASTC_SRGBA_10x6:
-    case Format.ASTC_SRGBA_10x8:
-    case Format.ASTC_SRGBA_10x10:
-    case Format.ASTC_SRGBA_12x10:
-    case Format.ASTC_SRGBA_12x12:
-        return gl.UNSIGNED_BYTE;
+    case Format.BGRA8: return 'uchar4norm';
+    case Format.RGBA8: return 'uchar4norm';
+    case Format.SRGB8_A8: return 'char4';
+    case Format.RGBA8SN: return 'char4norm';
+    case Format.RGBA8UI: return 'uchar4';
+    case Format.RGBA8I: return 'char4';
+    case Format.RGBA16F: return 'half4';
+    case Format.RGBA16UI: return 'ushort4';
+    case Format.RGBA16I: return 'short4';
+    case Format.RGBA32F: return 'float4';
+    case Format.RGBA32UI: return 'uint4';
+    case Format.RGBA32I: return 'int4';
 
     default: {
-        return gl.UNSIGNED_BYTE;
+        console.warn('unexpected format for WGPU detected, return \'int\' as default.');
+        return 'int';
     }
     }
 }
 
-export function GFXFormatToWebGLInternalFormat (format: Format): GPUTextureFormat  {
+export function GFXFormatToWGPUTextureFormat (format: Format): GPUTextureFormat  {
     switch (format) {
     case Format.R8: return 'r8unorm';
     case Format.R8SN: return 'r8snorm';
@@ -299,8 +206,8 @@ export function GFXFormatToWebGLInternalFormat (format: Format): GPUTextureForma
     }
 }
 
-export function GFXFormatToWebGLFormat (format: Format): GPUTextureFormat {
-    return GFXFormatToWebGLInternalFormat(format);
+export function GFXFormatToWGPUFormat (format: Format): GPUTextureFormat {
+    return GFXFormatToWGPUTextureFormat(format);
 }
 
 export function GFXTextureToWebGPUTexture (textureType: TextureType): GPUTextureViewDimension {
@@ -351,7 +258,7 @@ export function GFXTextureUsageToNative (usage: TextureUsageBit): GPUTextureUsag
     return nativeUsage;
 }
 
-function GFXTypeToWebGLType (type: Type, gl: WebGL2RenderingContext): GLenum {
+function GFXTypeToWGPUType (type: Type, gl: WebGL2RenderingContext): GLenum {
     switch (type) {
     case Type.BOOL: return gl.BOOL;
     case Type.BOOL2: return gl.BOOL_VEC2;
@@ -488,17 +395,6 @@ function WebGLGetComponentCount (glType: GLenum, gl: WebGL2RenderingContext): Ty
     }
     }
 }
-
-const WebGLCmpFuncs: GLenum[] = [
-    0x0200, // WebGLRenderingContext.NEVER,
-    0x0201, // WebGLRenderingContext.LESS,
-    0x0202, // WebGLRenderingContext.EQUAL,
-    0x0203, // WebGLRenderingContext.LEQUAL,
-    0x0204, // WebGLRenderingContext.GREATER,
-    0x0205, // WebGLRenderingContext.NOTEQUAL,
-    0x0206, // WebGLRenderingContext.GEQUAL,
-    0x0207, // WebGLRenderingContext.ALWAYS,
-];
 
 const WebGLStencilOps: GLenum[] = [
     0x0000, // WebGLRenderingContext.ZERO,
@@ -878,8 +774,8 @@ export function WebGPUCmdFuncCreateTexture (device: WebGPUDevice, gpuTexture: IW
     // let dim: GPUTextureViewDimension = GFXTextureToWebGPUTexture(gpuTexture.type);
 
     gpuTexture.glTarget = GFXTextureToWebGPUTexture(gpuTexture.type) as GPUTextureDimension;
-    gpuTexture.glInternalFmt = GFXFormatToWebGLInternalFormat(gpuTexture.format);
-    gpuTexture.glFormat = GFXFormatToWebGLFormat(gpuTexture.format);
+    gpuTexture.glInternalFmt = GFXFormatToWGPUTextureFormat(gpuTexture.format);
+    gpuTexture.glFormat = GFXFormatToWGPUFormat(gpuTexture.format);
     gpuTexture.glUsage = GFXTextureUsageToNative(gpuTexture.usage);
     gpuTexture.glWrapS = gpuTexture.isPowerOf2 ? 'repeat' : 'clamp-to-edge';
     gpuTexture.glWrapT = gpuTexture.isPowerOf2 ? 'repeat' : 'clamp-to-edge';

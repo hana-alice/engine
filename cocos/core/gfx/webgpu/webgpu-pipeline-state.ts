@@ -2,10 +2,16 @@ import { PipelineState, PipelineStateInfo } from '../pipeline-state';
 import { IWebGPUGPUPipelineState } from './webgpu-gpu-objects';
 import { WebGPURenderPass } from './webgpu-render-pass';
 import { WebGPUShader } from './webgpu-shader';
-import { CullMode, DynamicStateFlagBit, ShaderStageFlagBit } from '../define';
+import { CullMode, DynamicStateFlagBit, FormatInfos, ShaderStageFlagBit } from '../define';
 import { WebGPUPipelineLayout } from './webgpu-pipeline-layout';
 import { WebGPUDevice } from './webgpu-device';
-import { GFXFormatToWebGLInternalFormat, WebGPUBlendFactors, WebGPUBlendOps, WebGPUCompereFunc, WebGPUStencilOp } from './webgpu-commands';
+import { GFXFormatToWGPUFormat,
+    WebGPUBlendFactors,
+    WebGPUBlendOps,
+    WebGPUCompereFunc,
+    WebGPUStencilOp,
+    GFXFormatToWGPUVertexFormat,
+} from './webgpu-commands';
 
 const WebPUPrimitives: GPUPrimitiveTopology[] = [
     'point-list',
@@ -80,7 +86,7 @@ export class WebGPUPipelineState extends PipelineState {
         const colorDescs: GPUColorStateDescriptor[] = [];
         for (let i = 0; i < colorAttachments.length; i++) {
             colorDescs.push({
-                format: GFXFormatToWebGLInternalFormat(colorAttachments[i].format),
+                format: GFXFormatToWGPUFormat(colorAttachments[i].format),
                 alphaBlend: {
                     dstFactor: WebGPUBlendFactors[this._bs.targets[i].blendDstAlpha],
                     operation: WebGPUBlendOps[this._bs.targets[i].blendAlphaEq],
@@ -99,7 +105,7 @@ export class WebGPUPipelineState extends PipelineState {
         // depthstencil states
         if (this._renderPass.depthStencilAttachment) {
             const dssDesc = {} as GPUDepthStencilStateDescriptor;
-            dssDesc.format = GFXFormatToWebGLInternalFormat(this._renderPass.depthStencilAttachment.format);
+            dssDesc.format = GFXFormatToWGPUFormat(this._renderPass.depthStencilAttachment.format);
             dssDesc.depthWriteEnabled = this._dss.depthWrite;
             dssDesc.depthCompare = WebGPUCompereFunc[this._dss.depthFunc];
             let stencilReadMask = 0x0;
@@ -128,9 +134,32 @@ export class WebGPUPipelineState extends PipelineState {
             dssDesc.stencilReadMask = stencilReadMask;
             dssDesc.stencilWriteMask = stencilWriteMask;
         }
-
+        const gpuShader = info.shader as WebGPUShader;
+        const attrs = gpuShader.attributes;
         // -------optional-------
         // renderPplDesc.vertexState = {};
+        const vbAttrDescs: GPUVertexAttributeDescriptor[] = [];
+        let offset = 0;
+        for (let i = 0; i < attrs.length; i++) {
+            const attrDesc = {
+                format: GFXFormatToWGPUVertexFormat(attrs[i].format),
+                offset,
+                shaderLocation: attrs[i].location,
+            };
+            offset += FormatInfos[attrs[i].format].size;
+            vbAttrDescs.push(attrDesc);
+        }
+        renderPplDesc.vertexState = {
+            vertexBuffers: [
+                {
+                    arrayStride: offset,
+                    attributes: vbAttrDescs,
+                },
+            ],
+        };
+        if (renderPplDesc.primitiveTopology === 'line-strip' || renderPplDesc.primitiveTopology === 'triangle-strip') {
+            renderPplDesc.vertexState.indexFormat = 'uint16';
+        }
         // renderPplDesc.sampleCount = 0;
         // renderPplDesc.sampleMask = 0;
         // renderPplDesc.alphaToCoverageEnabled = false;
@@ -140,7 +169,7 @@ export class WebGPUPipelineState extends PipelineState {
 
         this._gpuPipelineState = {
             glPrimitive: WebPUPrimitives[info.primitive],
-            gpuShader: (info.shader as WebGPUShader).gpuShader,
+            gpuShader: gpuShader.gpuShader,
             gpuPipelineLayout: (info.pipelineLayout as WebGPUPipelineLayout).gpuPipelineLayout,
             rs: info.rasterizerState,
             dss: info.depthStencilState,
