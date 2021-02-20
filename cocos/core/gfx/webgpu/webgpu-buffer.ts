@@ -34,12 +34,26 @@ export class WebGPUBuffer extends Buffer {
                 memUsage: this._memUsage,
                 size: this._size,
                 stride: this._stride,
-                buffer: this._bakcupBuffer,
+                buffer: null,
                 indirects: buffer.gpuBuffer.indirects,
                 glTarget: buffer.gpuBuffer.glTarget,
                 glBuffer: buffer.gpuBuffer.glBuffer,
                 glOffset: info.offset,
+                drawIndirectByIndex: false,
             };
+
+            if (info.offset % 256 !== 0) {
+                this._isBufferView = false;
+                if (this._usage & BufferUsageBit.INDIRECT) {
+                    this._indirectBuffer = new IndirectBuffer();
+                }
+
+                this._gpuBuffer.glOffset = 0;
+
+                WebGPUCmdFuncCreateBuffer(this._device as WebGPUDevice, this._gpuBuffer);
+
+                this._device.memoryStatus.bufferSize += this._size;
+            }
         } else { // native buffer
             this._usage = info.usage;
             this._memUsage = info.memUsage;
@@ -52,21 +66,17 @@ export class WebGPUBuffer extends Buffer {
                 this._indirectBuffer = new IndirectBuffer();
             }
 
-            if (this._flags & BufferFlagBit.BAKUP_BUFFER) {
-                this._bakcupBuffer = new Uint8Array(this._size);
-                this._device.memoryStatus.bufferSize += this._size;
-            }
-
             this._gpuBuffer = {
                 usage: this._usage,
                 memUsage: this._memUsage,
                 size: this._size,
                 stride: this._stride,
-                buffer: this._bakcupBuffer,
+                buffer: null,
                 indirects: [],
                 glTarget: 0,
                 glBuffer: null,
                 glOffset: 0,
+                drawIndirectByIndex: false,
             };
 
             if (info.usage & BufferUsageBit.INDIRECT) {
@@ -89,8 +99,6 @@ export class WebGPUBuffer extends Buffer {
             }
             this._gpuBuffer = null;
         }
-
-        this._bakcupBuffer = null;
     }
 
     public resize (size: number) {
@@ -105,19 +113,7 @@ export class WebGPUBuffer extends Buffer {
         this._size = size;
         this._count = this._size / this._stride;
 
-        if (this._bakcupBuffer) {
-            const oldView = this._bakcupBuffer;
-            this._bakcupBuffer = new Uint8Array(this._size);
-            this._bakcupBuffer.set(oldView);
-            this._device.memoryStatus.bufferSize -= oldSize;
-            this._device.memoryStatus.bufferSize += size;
-        }
-
         if (this._gpuBuffer) {
-            if (this._bakcupBuffer) {
-                this._gpuBuffer.buffer = this._bakcupBuffer;
-            }
-
             this._gpuBuffer.size = size;
             if (size > 0) {
                 WebGPUCmdFuncResizeBuffer(this._device as WebGPUDevice, this._gpuBuffer);
@@ -140,10 +136,6 @@ export class WebGPUBuffer extends Buffer {
             buffSize = 0;
         } else {
             buffSize = (buffer as ArrayBuffer).byteLength;
-        }
-        if (this._bakcupBuffer && buffer !== this._bakcupBuffer.buffer) {
-            const view = new Uint8Array(buffer as ArrayBuffer, 0, size);
-            this._bakcupBuffer.set(view, offset);
         }
 
         WebGPUCmdFuncUpdateBuffer(

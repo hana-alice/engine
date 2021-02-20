@@ -167,6 +167,9 @@ export class WebGPUPipelineState extends PipelineState {
         const nativeDevice = (this._device as WebGPUDevice).nativeDevice();
         const nativePipeline = nativeDevice?.createRenderPipeline(renderPplDesc);
 
+        const cmdEncoder = nativeDevice?.createCommandEncoder();
+        nativeDevice?.defaultQueue.submit([cmdEncoder!.finish()]);
+
         this._gpuPipelineState = {
             glPrimitive: WebPUPrimitives[info.primitive],
             gpuShader: gpuShader.gpuShader,
