@@ -41,8 +41,9 @@ export class WebGPUBuffer extends Buffer {
                 glOffset: info.offset,
                 drawIndirectByIndex: false,
             };
-
-            if (info.offset % 256 !== 0) {
+            if (info.buffer.usage & BufferUsageBit.VERTEX) {
+                // const a = 0;
+            } else if (info.offset % 256 !== 0) {
                 this._isBufferView = false;
                 if (this._usage & BufferUsageBit.INDIRECT) {
                     this._indirectBuffer = new IndirectBuffer();
