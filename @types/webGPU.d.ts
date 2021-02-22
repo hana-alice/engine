@@ -2,6 +2,13 @@
 // except #494 which reverted the addition of GPUAdapter.limits
 // except #591 which removed Uint32Array from GPUShaderModuleDescriptor
 // except removal of old setIndexBuffer signature in #943
+// plus #873 which added aspect back to GPUTextureCopyView
+// plus #971 which added stencil8 to GPUTextureFormat
+// plus #1168 which renamed OUTPUT_ATTACHMENT to RENDER_ATTACHMENT
+// plus #1367 which renamed defaultQueue to queue
+// plus #1014 which made bytesPerRow optional
+// plus #1375 which renamed to GPUImageCopyX (but without removing old names)
+// plus #1390 which renamed depth to depthOrArrayLayers
 
 export {};
 
@@ -9,6 +16,10 @@ declare global {
   // Appends members to the `Navigator` interface defined globally.
   export interface Navigator {
     readonly gpu: GPU | undefined;
+  }
+
+  export interface HTMLCanvasElement {
+    getContext(contextId: 'gpupresent'): GPUCanvasContext | null;
   }
 
   export interface GPUColorDict {
@@ -30,14 +41,14 @@ declare global {
     y?: number;
     z?: number;
   }
-  export type GPUOrigin3D = [number, number, number] | GPUOrigin3DDict;
+  export type GPUOrigin3D = number[] | GPUOrigin3DDict;
 
   export interface GPUExtent3DDict {
     width: number;
     height: number;
-    depth: number;
+    depthOrArrayLayers: number;
   }
-  export type GPUExtent3D = [number, number, number] | GPUExtent3DDict;
+  export type GPUExtent3D = number[] | GPUExtent3DDict;
 
   export type GPUBindingResource =
     | GPUSampler
@@ -45,166 +56,169 @@ declare global {
     | GPUBufferBinding;
 
   export type GPUExtensionName =
-    | "texture-compression-bc"
-    | "timestamp-query"
-    | "pipeline-statistics-query"
-    | "depth-clamping";
-  export type GPUAddressMode = "clamp-to-edge" | "repeat" | "mirror-repeat";
+    | 'texture-compression-bc'
+    | 'timestamp-query'
+    | 'pipeline-statistics-query'
+    | 'depth-clamping';
+  export type GPUAddressMode = 'clamp-to-edge' | 'repeat' | 'mirror-repeat';
   export type GPUBindingType =
-    | "uniform-buffer"
-    | "storage-buffer"
-    | "readonly-storage-buffer"
-    | "sampler"
-    | "comparison-sampler"
-    | "sampled-texture"
-    | "readonly-storage-texture"
-    | "writeonly-storage-texture";
+    | 'uniform-buffer'
+    | 'storage-buffer'
+    | 'readonly-storage-buffer'
+    | 'sampler'
+    | 'comparison-sampler'
+    | 'sampled-texture'
+    | 'multisampled-texture'
+    | 'readonly-storage-texture'
+    | 'writeonly-storage-texture';
   export type GPUBlendFactor =
-    | "zero"
-    | "one"
-    | "src-color"
-    | "one-minus-src-color"
-    | "src-alpha"
-    | "one-minus-src-alpha"
-    | "dst-color"
-    | "one-minus-dst-color"
-    | "dst-alpha"
-    | "one-minus-dst-alpha"
-    | "src-alpha-saturated"
-    | "blend-color"
-    | "one-minus-blend-color";
+    | 'zero'
+    | 'one'
+    | 'src-color'
+    | 'one-minus-src-color'
+    | 'src-alpha'
+    | 'one-minus-src-alpha'
+    | 'dst-color'
+    | 'one-minus-dst-color'
+    | 'dst-alpha'
+    | 'one-minus-dst-alpha'
+    | 'src-alpha-saturated'
+    | 'blend-color'
+    | 'one-minus-blend-color';
   export type GPUBlendOperation =
-    | "add"
-    | "subtract"
-    | "reverse-subtract"
-    | "min"
-    | "max";
+    | 'add'
+    | 'subtract'
+    | 'reverse-subtract'
+    | 'min'
+    | 'max';
   export type GPUCompareFunction =
-    | "never"
-    | "less"
-    | "equal"
-    | "less-equal"
-    | "greater"
-    | "not-equal"
-    | "greater-equal"
-    | "always";
-  export type GPUCullMode = "none" | "front" | "back";
-  export type GPUFilterMode = "nearest" | "linear";
-  export type GPUFrontFace = "ccw" | "cw";
-  export type GPUIndexFormat = "uint16" | "uint32";
-  export type GPUInputStepMode = "vertex" | "instance";
-  export type GPULoadOp = "load";
+    | 'never'
+    | 'less'
+    | 'equal'
+    | 'less-equal'
+    | 'greater'
+    | 'not-equal'
+    | 'greater-equal'
+    | 'always';
+  export type GPUCullMode = 'none' | 'front' | 'back';
+  export type GPUFilterMode = 'nearest' | 'linear';
+  export type GPUFrontFace = 'ccw' | 'cw';
+  export type GPUIndexFormat = 'uint16' | 'uint32';
+  export type GPUInputStepMode = 'vertex' | 'instance';
+  export type GPULoadOp = 'load';
   export type GPUPrimitiveTopology =
-    | "point-list"
-    | "line-list"
-    | "line-strip"
-    | "triangle-list"
-    | "triangle-strip";
+    | 'point-list'
+    | 'line-list'
+    | 'line-strip'
+    | 'triangle-list'
+    | 'triangle-strip';
   export type GPUStencilOperation =
-    | "keep"
-    | "zero"
-    | "replace"
-    | "invert"
-    | "increment-clamp"
-    | "decrement-clamp"
-    | "increment-wrap"
-    | "decrement-wrap";
-  export type GPUStoreOp = "store" | "clear";
-  export type GPUTextureDimension = "1d" | "2d" | "3d";
+    | 'keep'
+    | 'zero'
+    | 'replace'
+    | 'invert'
+    | 'increment-clamp'
+    | 'decrement-clamp'
+    | 'increment-wrap'
+    | 'decrement-wrap';
+  export type GPUStoreOp = 'store' | 'clear';
+  export type GPUTextureDimension = '1d' | '2d' | '3d';
   export type GPUTextureFormat =
-    | "r8unorm"
-    | "r8snorm"
-    | "r8uint"
-    | "r8sint"
-    | "r16uint"
-    | "r16sint"
-    | "r16float"
-    | "rg8unorm"
-    | "rg8snorm"
-    | "rg8uint"
-    | "rg8sint"
-    | "r32uint"
-    | "r32sint"
-    | "r32float"
-    | "rg16uint"
-    | "rg16sint"
-    | "rg16float"
-    | "rgba8unorm"
-    | "rgba8unorm-srgb"
-    | "rgba8snorm"
-    | "rgba8uint"
-    | "rgba8sint"
-    | "bgra8unorm"
-    | "bgra8unorm-srgb"
-    | "rgb10a2unorm"
-    | "rg11b10float"
-    | "rg32uint"
-    | "rg32sint"
-    | "rg32float"
-    | "rgba16uint"
-    | "rgba16sint"
-    | "rgba16float"
-    | "rgba32uint"
-    | "rgba32sint"
-    | "rgba32float"
-    | "depth32float"
-    | "depth24plus"
-    | "depth24plus-stencil8"
-    | "bc1-rgba-unorm"
-    | "bc1-rgba-unorm-srgb"
-    | "bc2-rgba-unorm"
-    | "bc2-rgba-unorm-srgb"
-    | "bc3-rgba-unorm"
-    | "bc3-rgba-unorm-srgb"
-    | "bc4-r-unorm"
-    | "bc4-r-snorm"
-    | "bc5-rg-unorm"
-    | "bc5-rg-snorm"
-    | "bc6h-rgb-ufloat"
-    | "bc6h-rgb-sfloat"
-    | "bc7-rgba-unorm"
-    | "bc7-rgba-unorm-srgb";
-  export type GPUTextureComponentType = "float" | "sint" | "uint";
+    | 'r8unorm'
+    | 'r8snorm'
+    | 'r8uint'
+    | 'r8sint'
+    | 'r16uint'
+    | 'r16sint'
+    | 'r16float'
+    | 'rg8unorm'
+    | 'rg8snorm'
+    | 'rg8uint'
+    | 'rg8sint'
+    | 'r32uint'
+    | 'r32sint'
+    | 'r32float'
+    | 'rg16uint'
+    | 'rg16sint'
+    | 'rg16float'
+    | 'rgba8unorm'
+    | 'rgba8unorm-srgb'
+    | 'rgba8snorm'
+    | 'rgba8uint'
+    | 'rgba8sint'
+    | 'bgra8unorm'
+    | 'bgra8unorm-srgb'
+    | 'rgb10a2unorm'
+    | 'rg11b10ufloat'
+    | 'rgb9e5ufloat'
+    | 'rg32uint'
+    | 'rg32sint'
+    | 'rg32float'
+    | 'rgba16uint'
+    | 'rgba16sint'
+    | 'rgba16float'
+    | 'rgba32uint'
+    | 'rgba32sint'
+    | 'rgba32float'
+    | 'depth32float'
+    | 'depth24plus'
+    | 'depth24plus-stencil8'
+    | 'stencil8'
+    | 'bc1-rgba-unorm'
+    | 'bc1-rgba-unorm-srgb'
+    | 'bc2-rgba-unorm'
+    | 'bc2-rgba-unorm-srgb'
+    | 'bc3-rgba-unorm'
+    | 'bc3-rgba-unorm-srgb'
+    | 'bc4-r-unorm'
+    | 'bc4-r-snorm'
+    | 'bc5-rg-unorm'
+    | 'bc5-rg-snorm'
+    | 'bc6h-rgb-ufloat'
+    | 'bc6h-rgb-float'
+    | 'bc7-rgba-unorm'
+    | 'bc7-rgba-unorm-srgb';
+  export type GPUTextureComponentType = 'float' | 'sint' | 'uint' | 'depth-comparison';
   export type GPUTextureViewDimension =
-    | "1d"
-    | "2d"
-    | "2d-array"
-    | "cube"
-    | "cube-array"
-    | "3d";
+    | '1d'
+    | '2d'
+    | '2d-array'
+    | 'cube'
+    | 'cube-array'
+    | '3d';
   export type GPUVertexFormat =
-    | "uchar2"
-    | "uchar4"
-    | "char2"
-    | "char4"
-    | "uchar2norm"
-    | "uchar4norm"
-    | "char2norm"
-    | "char4norm"
-    | "ushort2"
-    | "ushort4"
-    | "short2"
-    | "short4"
-    | "ushort2norm"
-    | "ushort4norm"
-    | "short2norm"
-    | "short4norm"
-    | "half2"
-    | "half4"
-    | "float"
-    | "float2"
-    | "float3"
-    | "float4"
-    | "uint"
-    | "uint2"
-    | "uint3"
-    | "uint4"
-    | "int"
-    | "int2"
-    | "int3"
-    | "int4";
+    | 'uchar2'
+    | 'uchar4'
+    | 'char2'
+    | 'char4'
+    | 'uchar2norm'
+    | 'uchar4norm'
+    | 'char2norm'
+    | 'char4norm'
+    | 'ushort2'
+    | 'ushort4'
+    | 'short2'
+    | 'short4'
+    | 'ushort2norm'
+    | 'ushort4norm'
+    | 'short2norm'
+    | 'short4norm'
+    | 'half2'
+    | 'half4'
+    | 'float'
+    | 'float2'
+    | 'float3'
+    | 'float4'
+    | 'uint'
+    | 'uint2'
+    | 'uint3'
+    | 'uint4'
+    | 'int'
+    | 'int2'
+    | 'int3'
+    | 'int4';
 
-  export type GPUTextureAspect = "all" | "stencil-only" | "depth-only";
+  export type GPUTextureAspect = 'all' | 'stencil-only' | 'depth-only';
 
   export type GPUBufferUsageFlags = number;
   export const GPUBufferUsage: {
@@ -242,7 +256,7 @@ declare global {
     COPY_DST:          0x02;
     SAMPLED:           0x04;
     STORAGE:           0x08;
-    OUTPUT_ATTACHMENT: 0x10;
+    RENDER_ATTACHMENT: 0x10;
   };
 
   export type GPUMapModeFlags = number;
@@ -269,7 +283,6 @@ declare global {
     minBufferBindingSize?: number;
     viewDimension?: GPUTextureViewDimension;
     textureComponentType?: GPUTextureComponentType;
-    multisampled?: boolean;
     storageTextureFormat?: GPUTextureFormat;
   }
 
@@ -298,20 +311,27 @@ declare global {
     size?: number;
   }
 
-  export interface GPUTextureDataLayout {
+  /** @deprecated */
+  export type GPUTextureDataLayout = GPUImageDataLayout;
+  export interface GPUImageDataLayout {
     offset?: number;
-    bytesPerRow: number;
+    bytesPerRow?: number;
     rowsPerImage?: number;
   }
 
-  export interface GPUBufferCopyView extends GPUTextureDataLayout {
+  /** @deprecated */
+  export type GPUBufferCopyView = GPUImageCopyBuffer;
+  export interface GPUImageCopyBuffer extends GPUImageDataLayout {
     buffer: GPUBuffer;
   }
 
-  export interface GPUTextureCopyView {
+  /** @deprecated */
+  export type GPUTextureCopyView = GPUImageCopyTexture;
+  export interface GPUImageCopyTexture {
     texture: GPUTexture;
     mipLevel?: number;
     origin?: GPUOrigin3D;
+    aspect?: GPUTextureAspect;
   }
 
   export interface GPUImageBitmapCopyView {
@@ -577,6 +597,7 @@ declare global {
     ): void;
     finish(descriptor?: GPUCommandBufferDescriptor): GPUCommandBuffer;
 
+    resolveQuerySet(querySet: GPUQuerySet, firstQuery: number, queryCount: number, destination: GPUBuffer, destinationOffset: number): void;
     writeTimestamp(querySet: GPUQuerySet, queryIndex: number): void;
 
     popDebugGroup(): void;
@@ -594,6 +615,14 @@ declare global {
       index: number,
       bindGroup: GPUBindGroup,
       dynamicOffsets?: Iterable<number>
+    ): void;
+
+    setBindGroup(
+      index: number,
+      bindGroup: GPUBindGroup,
+      dynamicOffsetsData: Uint32Array,
+      dynamicOffsetsDataStart: number,
+      dynamicOffsetsDataLength: number
     ): void;
 
     popDebugGroup(): void;
@@ -676,7 +705,7 @@ declare global {
 
     createQuerySet(descriptor: GPUQuerySetDescriptor): GPUQuerySet;
 
-    defaultQueue: GPUQueue;
+    queue: GPUQueue;
 
     pushErrorScope(filter: GPUErrorFilter): void;
     popErrorScope(): Promise<GPUError | null>;
@@ -706,6 +735,14 @@ declare global {
       index: number,
       bindGroup: GPUBindGroup,
       dynamicOffsets?: Iterable<number>
+    ): void;
+
+    setBindGroup(
+      index: number,
+      bindGroup: GPUBindGroup,
+      dynamicOffsetsData: Uint32Array,
+      dynamicOffsetsDataStart: number,
+      dynamicOffsetsDataLength: number
     ): void;
 
     popDebugGroup(): void;
@@ -739,15 +776,15 @@ declare global {
   }
 
   type GPUQueryType =
-    | "occlusion"
-    | "timestamp"
-    | "pipeline-statistics";
+    | 'occlusion'
+    | 'timestamp'
+    | 'pipeline-statistics';
   type GPUPipelineStatisticName =
-    | "vertex-shader-invocations"
-    | "clipper-invocations"
-    | "clipper-primitives-out"
-    | "fragment-shader-invocations"
-    | "compute-shader-invocations";
+    | 'vertex-shader-invocations'
+    | 'clipper-invocations'
+    | 'clipper-primitives-out'
+    | 'fragment-shader-invocations'
+    | 'compute-shader-invocations';
 
   export interface GPUQuerySetDescriptor extends GPUObjectDescriptorBase {
     type: GPUQueryType;
@@ -765,7 +802,6 @@ declare global {
   export interface GPURenderEncoderBase {
     setPipeline(pipeline: GPURenderPipeline): void;
 
-    setIndexBuffer(buffer: GPUBuffer, offset?: number, size?: number): void;
     setIndexBuffer(buffer: GPUBuffer, indexFormat: GPUIndexFormat, offset?: number, size?: number): void;
     setVertexBuffer(slot: number, buffer: GPUBuffer, offset?: number, size?: number): void;
 
@@ -800,13 +836,20 @@ declare global {
       dynamicOffsets?: Iterable<number>
     ): void;
 
+    setBindGroup(
+      index: number,
+      bindGroup: GPUBindGroup,
+      dynamicOffsetsData: Uint32Array,
+      dynamicOffsetsDataStart: number,
+      dynamicOffsetsDataLength: number
+    ): void;
+
     popDebugGroup(): void;
     pushDebugGroup(groupLabel: string): void;
     insertDebugMarker(markerLabel: string): void;
 
     setPipeline(pipeline: GPURenderPipeline): void;
 
-    setIndexBuffer(buffer: GPUBuffer, offset?: number): void;
     setIndexBuffer(buffer: GPUBuffer, indexFormat: GPUIndexFormat, offset?: number, size?: number): void;
     setVertexBuffer(slot: number, buffer: GPUBuffer, offset?: number): void;
 
@@ -870,15 +913,22 @@ declare global {
       dynamicOffsets?: Iterable<number>
     ): void;
 
+    setBindGroup(
+      index: number,
+      bindGroup: GPUBindGroup,
+      dynamicOffsetsData: Uint32Array,
+      dynamicOffsetsDataStart: number,
+      dynamicOffsetsDataLength: number
+    ): void;
+
     popDebugGroup(): void;
     pushDebugGroup(groupLabel: string): void;
     insertDebugMarker(markerLabel: string): void;
 
     setPipeline(pipeline: GPURenderPipeline): void;
 
-    setIndexBuffer(buffer: GPUBuffer, offset?: number): void;
     setIndexBuffer(buffer: GPUBuffer, indexFormat: GPUIndexFormat, offset?: number, size?: number): void;
-    setVertexBuffer(slot: number, buffer: GPUBuffer, offset?: number): void;
+    setVertexBuffer(slot: number, buffer: GPUBuffer, offset?: number, size?: number): void;
 
     draw(
       vertexCount: number,
@@ -923,9 +973,9 @@ declare global {
   }
 
   export type GPUCompilationMessageType =
-    | "error"
-    | "warning"
-    | "info";
+    | 'error'
+    | 'warning'
+    | 'info';
 
   export interface GPUCompilationMessage {
     readonly message: string;
@@ -965,7 +1015,7 @@ declare global {
     label: string | undefined;
   }
 
-  export type GPUPowerPreference = "low-power" | "high-performance";
+  export type GPUPowerPreference = 'low-power' | 'high-performance';
   export interface GPURequestAdapterOptions {
     powerPreference?: GPUPowerPreference;
   }
@@ -979,7 +1029,7 @@ declare global {
   // ERROR SCOPES
   // ****************************************************************************
 
-  export type GPUErrorFilter = "out-of-memory" | "validation";
+  export type GPUErrorFilter = 'out-of-memory' | 'validation';
 
   export class GPUOutOfMemoryError {
     private __brand: void;

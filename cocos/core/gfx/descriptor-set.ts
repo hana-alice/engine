@@ -48,6 +48,12 @@ export class DescriptorSetInfo {
     ) {}
 }
 
+export interface DescriptorSetResource {
+    buffer: Buffer,
+    texture: Texture,
+    sampler: Sampler
+}
+
 /**
  * @en GFX descriptor sets.
  * @zh GFX 描述符集组。

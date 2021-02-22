@@ -46,11 +46,22 @@ export class WebGPUDescriptorSetLayout extends DescriptorSetLayout {
                     visibility: GLStageToWebGPUStage(binding.stageFlags),
                     type: GLDescTypeToWebGPUDescType(binding.descriptorType)!,
                 };
-                // this._bindGrpLayoutEntries.push(grpLayoutEntry);
+                this._bindGrpLayoutEntries.push(grpLayoutEntry);
+
+                /* ---------------FIXME: temp solution for combined tex/sampler---------------------*/
+                if (binding.descriptorType === DescriptorType.SAMPLER) {
+                    const grpLayoutEntry: GPUBindGroupLayoutEntry = {
+                        binding: binding.binding + 20,
+                        visibility: GLStageToWebGPUStage(binding.stageFlags),
+                        type: 'sampled-texture',
+                    };
+                    this._bindGrpLayoutEntries.push(grpLayoutEntry);
+                }
+                /*---------------------------------------------------------------------------------*/
             }
         }
-
-        // const bindGrpLayout = nativeDevice?.createBindGroupLayout({ entries: bindGrpLayoutEntries });
+        const nativeDevice = (this._device as WebGPUDevice).nativeDevice();
+        const bindGrpLayout = nativeDevice?.createBindGroupLayout({ entries: this._bindGrpLayoutEntries });
 
         const dynamicBindings: number[] = [];
         for (let i = 0; i < this._bindings.length; i++) {
@@ -67,7 +78,7 @@ export class WebGPUDescriptorSetLayout extends DescriptorSetLayout {
             dynamicBindings,
             descriptorIndices,
             descriptorCount,
-            bindGroupLayout: null,
+            bindGroupLayout: bindGrpLayout!,
         };
 
         return true;

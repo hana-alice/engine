@@ -491,6 +491,7 @@ export enum DescriptorType {
     STORAGE_BUFFER = 0x4,
     DYNAMIC_STORAGE_BUFFER = 0x8,
     SAMPLER = 0x10,
+    TEXTURE = 0x20,
 }
 
 export enum CommandBufferType {

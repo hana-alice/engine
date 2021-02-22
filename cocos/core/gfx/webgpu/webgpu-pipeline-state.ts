@@ -61,6 +61,8 @@ export class WebGPUPipelineState extends PipelineState {
         const nativePipelineLayout = (this._pipelineLayout as WebGPUPipelineLayout).gpuPipelineLayout.nativePipelineLayout;
         renderPplDesc.layout = nativePipelineLayout;
 
+        const lyt = (this._pipelineLayout as WebGPUPipelineLayout);
+
         // shadestage
         const shaderStages = (this._shader as WebGPUShader).gpuShader.gpuStages;
         for (let i = 0; i < shaderStages.length; i++) {
@@ -160,15 +162,15 @@ export class WebGPUPipelineState extends PipelineState {
         if (renderPplDesc.primitiveTopology === 'line-strip' || renderPplDesc.primitiveTopology === 'triangle-strip') {
             renderPplDesc.vertexState.indexFormat = 'uint16';
         }
-        // renderPplDesc.sampleCount = 0;
-        // renderPplDesc.sampleMask = 0;
-        // renderPplDesc.alphaToCoverageEnabled = false;
+        renderPplDesc.sampleCount = 1;
+        renderPplDesc.sampleMask = 0;
+        renderPplDesc.alphaToCoverageEnabled = false;
 
         const nativeDevice = (this._device as WebGPUDevice).nativeDevice();
         const nativePipeline = nativeDevice?.createRenderPipeline(renderPplDesc);
 
         const cmdEncoder = nativeDevice?.createCommandEncoder();
-        nativeDevice?.defaultQueue.submit([cmdEncoder!.finish()]);
+        nativeDevice?.queue.submit([cmdEncoder!.finish()]);
 
         this._gpuPipelineState = {
             glPrimitive: WebPUPrimitives[info.primitive],

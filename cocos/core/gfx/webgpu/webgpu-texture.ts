@@ -1,23 +1,22 @@
 import { TextureFlagBit, FormatSurfaceSize } from '../define';
 import { Texture, TextureInfo, IsPowerOf2, TextureViewInfo } from '../texture';
-import { 
-    WebGPUCmdFuncCreateTexture, 
-    WebGPUCmdFuncDestroyTexture, 
-    WebGPUCmdFuncResizeTexture, 
-    GFXTextureToWebGPUTexture, 
+import {
+    WebGPUCmdFuncCreateTexture,
+    WebGPUCmdFuncDestroyTexture,
+    WebGPUCmdFuncResizeTexture,
+    GFXTextureToWebGPUTexture,
     GFXTextureUsageToNative,
 } from './webgpu-commands';
 import { WebGPUDevice } from './webgpu-device';
 import { IWebGPUGPUTexture } from './webgpu-gpu-objects';
 
 export class WebGPUTexture extends Texture {
-
     get gpuTexture (): IWebGPUGPUTexture {
         return  this._gpuTexture!;
     }
 
     private _gpuTexture: IWebGPUGPUTexture | null = null;
-    private _texDescriptor: GPUTextureDescriptor | null = null;  
+    private _texDescriptor: GPUTextureDescriptor | null = null;
 
     public initialize (info: TextureInfo | TextureViewInfo): boolean {
         if ('texture' in info) {
@@ -57,18 +56,18 @@ export class WebGPUTexture extends Texture {
             flags: this._flags,
             isPowerOf2: this._isPowerOf2,
 
-            //default value, filled in when texture is created.
-            glTarget: "2d",
-            glInternalFmt: "rgba8unorm",
-            glFormat: "rgba8unorm",
+            // default value, filled in when texture is created.
+            glTarget: '2d',
+            glInternalFmt: 'rgba8unorm',
+            glFormat: 'rgba8unorm',
             glType: 0,
-            glUsage: GPUTextureUsage.OUTPUT_ATTACHMENT,
+            glUsage: GPUTextureUsage.RENDER_ATTACHMENT,
             glTexture: null,
             glRenderbuffer: null,
-            glWrapS: "clamp-to-edge",
-            glWrapT: "clamp-to-edge",
-            glMinFilter: "linear",
-            glMagFilter: "linear",
+            glWrapS: 'clamp-to-edge',
+            glWrapT: 'clamp-to-edge',
+            glMinFilter: 'linear',
+            glMagFilter: 'linear',
         };
 
         WebGPUCmdFuncCreateTexture(this._device as WebGPUDevice, this._gpuTexture);
@@ -76,7 +75,7 @@ export class WebGPUTexture extends Texture {
         return true;
     }
 
-    public getNativeTextureView() {
+    public getNativeTextureView () {
         if (this._gpuTexture?.glTexture) {
             return this._gpuTexture.glTexture.createView();
         }
@@ -92,7 +91,6 @@ export class WebGPUTexture extends Texture {
     }
 
     public resize (width: number, height: number) {
-
         const oldSize = this._size;
         this._width = width;
         this._height = height;

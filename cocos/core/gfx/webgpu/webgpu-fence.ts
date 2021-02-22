@@ -20,11 +20,11 @@ export class WebGPUFence extends Fence {
     }
 
     public aquire () {
-        this._fence = (this._device as WebGPUDevice).nativeDevice()?.defaultQueue.createFence(this._fenceDescriptor);
+        this._fence = (this._device as WebGPUDevice).nativeDevice()?.queue.createFence(this._fenceDescriptor);
     }
 
     public release () {
-        (this._device as WebGPUDevice).nativeDevice()?.defaultQueue.signal(this._fence!, 0);
+        (this._device as WebGPUDevice).nativeDevice()?.queue.signal(this._fence!, 0);
     }
 
     public destroy () {

@@ -26,7 +26,7 @@ export class WebGPUQueue extends Queue {
         if (!this._isAsync) {
             for (let i = 0; i < cmdBuffs.length; i++) {
                 const cmdBuff = cmdBuffs[i] as WebGPUCommandBuffer;
-                WebGPUCmdFuncExecuteCmds(this._device as WebGPUDevice, cmdBuff.cmdPackage); // opted out
+                // WebGPUCmdFuncExecuteCmds(this._device as WebGPUDevice, cmdBuff.cmdPackage); // opted out
                 this.numDrawCalls += cmdBuff.numDrawCalls;
                 this.numInstances += cmdBuff.numInstances;
                 this.numTris += cmdBuff.numTris;

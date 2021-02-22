@@ -1,6 +1,6 @@
 import glslang, { Glslang } from '@webgpu/glslang/dist/web-devel/glslang';
 import { macro, warnID, warn } from '../../platform';
-import { DescriptorSet, DescriptorSetInfo } from '../descriptor-set';
+import { DescriptorSet, DescriptorSetInfo, DescriptorSetResource } from '../descriptor-set';
 import { Buffer, BufferInfo, BufferViewInfo } from '../buffer';
 import { CommandBuffer, CommandBufferInfo } from '../command-buffer';
 import { Device, DeviceInfo, BindingMappingInfo } from '../device';
@@ -33,26 +33,9 @@ import { WebGPUTexture } from './webgpu-texture';
 import { GFXFormatToWebGLFormat, GFXFormatToWebGLType, WebGPUCmdFuncBlitFramebuffer,
     WebGPUCmdFuncCopyBuffersToTexture, WebGPUCmdFuncCopyTexImagesToTexture } from './webgpu-commands';
 import { getTypedArrayConstructor, CommandBufferType, Filter, Format, FormatInfos,
-    QueueType, TextureFlagBit, TextureType, TextureUsageBit,  API, Feature } from '../define';
+    QueueType, TextureFlagBit, TextureType, TextureUsageBit,  API, Feature, SampleCount, BufferUsageBit, MemoryUsageBit, BufferFlagBit } from '../define';
 import { BufferTextureCopy, Rect } from '../define-class';
 import { WebGPUCommandAllocator } from './webgpu-command-allocator';
-// import { Glslang } from './glslang';
-// import getGlslang from './glslang';
-
-// namespace glslangModule {
-//     export type ShaderStage = 'vertex' | 'fragment' | 'compute';
-//     export type SpirvVersion = '1.0' | '1.1' | '1.2' | '1.3' | '1.4' | '1.5';
-
-//     export interface ResultZeroCopy {
-//         readonly data: Uint32Array;
-//         free (): void;
-//     }
-
-//     export interface Glslang {
-//         compileGLSLZeroCopy (glsl: string, shader_stage: ShaderStage, gen_debug: boolean, spirv_version?: SpirvVersion): ResultZeroCopy;
-//         compileGLSL (glsl: string, shader_type: ShaderStage, gen_debug: boolean, spirv_version?: SpirvVersion): Uint32Array;
-//     }
-// }
 
 export class WebGPUDevice extends Device {
     get gl (): WebGL2RenderingContext {
@@ -139,6 +122,7 @@ export class WebGPUDevice extends Device {
     public cmdAllocator: WebGPUCommandAllocator = new WebGPUCommandAllocator();
     public nullTex2D: WebGPUTexture | null = null;
     public nullTexCube: WebGPUTexture | null = null;
+    public defaultDescriptorResource: DescriptorSetResource | null = null;
 
     private _adapter: GPUAdapter | null | undefined = null;
     private _device: GPUDevice | null | undefined = null;
@@ -176,10 +160,10 @@ export class WebGPUDevice extends Device {
             size: {
                 width: this._canvas.width,
                 height: this._canvas.height,
-                depth: 1,
+                depthOrArrayLayers: 1,
             },
             format: 'depth24plus-stencil8',
-            usage: GPUTextureUsage.OUTPUT_ATTACHMENT,
+            usage: GPUTextureUsage.RENDER_ATTACHMENT,
         });
 
         // FIXME: require by query
@@ -188,15 +172,56 @@ export class WebGPUDevice extends Device {
         this._queue = this.createQueue(new QueueInfo(QueueType.GRAPHICS));
         this._cmdBuff = this.createCommandBuffer(new CommandBufferInfo(this._queue));
 
-        // glslangModule().then((glslang) => {
-        //     this._glslang = glslang;
-        // });
+        const texInfo = new TextureInfo(
+            TextureType.TEX2D,
+            TextureUsageBit.NONE,
+            Format.RGBA8,
+            16,
+            16,
+            TextureFlagBit.NONE,
+            1,
+            1,
+            SampleCount.X1,
+            1,
+        );
+        const defaultDescTexResc = this.createTexture(texInfo);
+
+        const bufferInfo = new BufferInfo(
+            BufferUsageBit.NONE,
+            MemoryUsageBit.NONE,
+            16,
+            16, // in bytes
+            BufferFlagBit.NONE,
+        );
+        const defaultDescBuffResc = this.createBuffer(bufferInfo);
+
+        const samplerInfo = new SamplerInfo();
+        const defaultDescSmplResc = this.createSampler(samplerInfo);
+
+        this.defaultDescriptorResource = {
+            buffer: defaultDescBuffResc,
+            texture: defaultDescTexResc,
+            sampler: defaultDescSmplResc,
+        };
+
         return true;
     }
 
     public destroy (): void {
         if (this._defaultDepthStencilTex) {
             this._defaultDepthStencilTex?.destroy();
+        }
+
+        if (this.defaultDescriptorResource) {
+            if (this.defaultDescriptorResource.buffer) {
+                this.defaultDescriptorResource.buffer.destroy();
+            }
+            if (this.defaultDescriptorResource.texture) {
+                this.defaultDescriptorResource.texture.destroy();
+            }
+            if (this.defaultDescriptorResource.sampler) {
+                this.defaultDescriptorResource.sampler.destroy();
+            }
         }
     }
 

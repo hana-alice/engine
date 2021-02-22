@@ -213,7 +213,7 @@ export class WebGPUCommandBuffer extends CommandBuffer {
         passEncoder!.endPass();
         this._renderPassFuncQueue = [];
 
-        nativeDevice?.defaultQueue.submit([cmdEncoder!.finish()]);
+        nativeDevice?.queue.submit([cmdEncoder!.finish()]);
         this._isInRenderPass = false;
     }
 
