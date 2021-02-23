@@ -95,6 +95,9 @@ export class WebGPUDescriptorSet extends DescriptorSet {
     public destroy () {
         this._layout = null;
         this._gpuDescriptorSet = null;
+        this._bindGroupEntries = [];
+        this._samplerIdxMap.clear();
+        this._textureIdxMap.clear();
     }
 
     public update () {
