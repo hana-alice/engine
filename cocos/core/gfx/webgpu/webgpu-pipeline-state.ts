@@ -107,7 +107,7 @@ export class WebGPUPipelineState extends PipelineState {
         // depthstencil states
         if (this._renderPass.depthStencilAttachment) {
             const dssDesc = {} as GPUDepthStencilStateDescriptor;
-            dssDesc.format = GFXFormatToWGPUFormat(this._renderPass.depthStencilAttachment.format);
+            dssDesc.format = 'depth24plus-stencil8';// GFXFormatToWGPUFormat(this._renderPass.depthStencilAttachment.format);
             dssDesc.depthWriteEnabled = this._dss.depthWrite;
             dssDesc.depthCompare = WebGPUCompereFunc[this._dss.depthFunc];
             let stencilReadMask = 0x0;
@@ -135,6 +135,7 @@ export class WebGPUPipelineState extends PipelineState {
             }
             dssDesc.stencilReadMask = stencilReadMask;
             dssDesc.stencilWriteMask = stencilWriteMask;
+            renderPplDesc.depthStencilState = dssDesc;
         }
         const gpuShader = info.shader as WebGPUShader;
         const attrs = gpuShader.attributes;
