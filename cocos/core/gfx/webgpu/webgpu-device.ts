@@ -158,8 +158,8 @@ export class WebGPUDevice extends Device {
 
         this._defaultDepthStencilTex = device.createTexture({
             size: {
-                width: this._canvas.width,
-                height: this._canvas.height,
+                width: this._canvas.width * info.devicePixelRatio,
+                height: this._canvas.height * info.devicePixelRatio,
                 depthOrArrayLayers: 1,
             },
             format: 'depth24plus-stencil8',

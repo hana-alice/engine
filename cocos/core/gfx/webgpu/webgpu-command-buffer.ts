@@ -161,6 +161,7 @@ export class WebGPUCommandBuffer extends CommandBuffer {
         for (let i = 0; i < clearColors.length; i++) {
             const colorTex = gpuFramebuffer.isOffscreen ? gpuFramebuffer.gpuColorTextures[i].glTexture?.createView()
                 : gpuDevice.defaultColorTex?.createView();
+            colorTex!.label = gpuFramebuffer.isOffscreen ? 'offscr' : 'swapchain';
             this._nativePassDesc.colorAttachments[i] = {
                 attachment: colorTex,
                 loadValue: [clearColors[i].x, clearColors[i].y, clearColors[i].z, clearColors[i].w], // RGBA
@@ -525,45 +526,47 @@ export class WebGPUCommandBuffer extends CommandBuffer {
     }
 
     protected bindStates () {
-        const { dynamicOffsetIndices } = this._curGPUPipelineState?.gpuPipelineLayout as IWebGPUGPUPipelineLayout;
+        if (this._curGPUPipelineState) {
+            const { dynamicOffsetIndices } = this._curGPUPipelineState?.gpuPipelineLayout as IWebGPUGPUPipelineLayout;
 
-        const wgpuPipeline = this._curGPUPipelineState?.nativePipeline as GPURenderPipeline;
-        const pplFunc = (passEncoder: GPURenderPassEncoder) => {
-            passEncoder.setPipeline(wgpuPipeline);
-        };
-        this._renderPassFuncQueue.push(pplFunc);
+            const wgpuPipeline = this._curGPUPipelineState?.nativePipeline as GPURenderPipeline;
+            const pplFunc = (passEncoder: GPURenderPassEncoder) => {
+                passEncoder.setPipeline(wgpuPipeline);
+            };
+            this._renderPassFuncQueue.push(pplFunc);
 
-        const bgfunc = (passEncoder: GPURenderPassEncoder) => {
-            for (let i = 0; i < this._curGPUDescriptorSets.length; i++) {
+            const bgfunc = (passEncoder: GPURenderPassEncoder) => {
+                for (let i = 0; i < this._curGPUDescriptorSets.length; i++) {
                 // FIXME: this is a special sentence that 2 in 3 parameters I'm not certain.
-                passEncoder.setBindGroup(i, this._curGPUDescriptorSets[i].bindGroup);
-            }
-        };
-        this._renderPassFuncQueue.push(bgfunc);
+                    passEncoder.setBindGroup(i, this._curGPUDescriptorSets[i].bindGroup);
+                }
+            };
+            this._renderPassFuncQueue.push(bgfunc);
 
-        const ia = this._curGPUInputAssembler!;
+            const ia = this._curGPUInputAssembler!;
 
-        const vbFunc = (passEncoder: GPURenderPassEncoder) => {
-            for (let i = 0; i < ia.gpuVertexBuffers.length; i++) {
-                passEncoder.setVertexBuffer(i, ia.gpuVertexBuffers[i].glBuffer!, ia.gpuVertexBuffers[i].glOffset);
-            }
-        };
-        this._renderPassFuncQueue.push(vbFunc);
+            const vbFunc = (passEncoder: GPURenderPassEncoder) => {
+                for (let i = 0; i < ia.gpuVertexBuffers.length; i++) {
+                    passEncoder.setVertexBuffer(i, ia.gpuVertexBuffers[i].glBuffer!, ia.gpuVertexBuffers[i].glOffset);
+                }
+            };
+            this._renderPassFuncQueue.push(vbFunc);
 
-        const bcFunc = (passEncoder: GPURenderPassEncoder) => {
-            passEncoder.setBlendColor([this._curBlendConstants[0],
-                this._curBlendConstants[1],
-                this._curBlendConstants[2],
-                this._curBlendConstants[3]]);
-        };
-        this._renderPassFuncQueue.push(bcFunc);
+            const bcFunc = (passEncoder: GPURenderPassEncoder) => {
+                passEncoder.setBlendColor([this._curBlendConstants[0],
+                    this._curBlendConstants[1],
+                    this._curBlendConstants[2],
+                    this._curBlendConstants[3]]);
+            };
+            this._renderPassFuncQueue.push(bcFunc);
 
-        const ibFunc = (passEncoder: GPURenderPassEncoder) => {
-            passEncoder.setIndexBuffer(ia.gpuIndexBuffer?.glBuffer as GPUBuffer,
-                ia.glIndexType, ia.gpuIndexBuffer?.glOffset, ia.gpuIndexBuffer?.size);
-        };
-        this._renderPassFuncQueue.push(ibFunc);
+            const ibFunc = (passEncoder: GPURenderPassEncoder) => {
+                passEncoder.setIndexBuffer(ia.gpuIndexBuffer?.glBuffer as GPUBuffer,
+                    ia.glIndexType, ia.gpuIndexBuffer?.glOffset, ia.gpuIndexBuffer?.size);
+            };
+            this._renderPassFuncQueue.push(ibFunc);
 
-        this._isStateInvalied = false;
+            this._isStateInvalied = false;
+        }
     }
 }
