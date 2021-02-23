@@ -211,10 +211,10 @@ export class WebGPUCommandBuffer extends CommandBuffer {
         });
 
         passEncoder!.endPass();
-        this._renderPassFuncQueue = [];
 
         nativeDevice?.queue.submit([cmdEncoder!.finish()]);
         this._isInRenderPass = false;
+        this._renderPassFuncQueue = [];
     }
 
     public bindPipelineState (pipelineState: PipelineState) {
@@ -386,7 +386,7 @@ export class WebGPUCommandBuffer extends CommandBuffer {
                 }
             } else {
                 const instanceCount = inputAssembler.instanceCount > 0 ? inputAssembler.instanceCount : 1;
-                const drawByIndex = inputAssembler.indirectBuffer && (ia.indexCount > 0);
+                const drawByIndex = inputAssembler.indexBuffer && (ia.indexCount > 0);
 
                 if (drawByIndex) {
                     const drawFunc = (passEncoder: GPURenderPassEncoder) => {
@@ -536,7 +536,7 @@ export class WebGPUCommandBuffer extends CommandBuffer {
         const bgfunc = (passEncoder: GPURenderPassEncoder) => {
             for (let i = 0; i < this._curGPUDescriptorSets.length; i++) {
                 // FIXME: this is a special sentence that 2 in 3 parameters I'm not certain.
-                passEncoder.setBindGroup(i, this._curGPUDescriptorSets[i].bindGroup, this._curDynamicOffsets[i]);
+                passEncoder.setBindGroup(i, this._curGPUDescriptorSets[i].bindGroup);
             }
         };
         this._renderPassFuncQueue.push(bgfunc);

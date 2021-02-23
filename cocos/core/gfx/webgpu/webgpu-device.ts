@@ -148,7 +148,7 @@ export class WebGPUDevice extends Device {
 
         this._canvas = info.canvasElm as HTMLCanvasElement;
         this._context = this._canvas.getContext('gpupresent')!;
-        const swapchainFormat = 'bgra8unorm';
+        const swapchainFormat = 'rgba8unorm';
 
         const device: GPUDevice = this._device as GPUDevice;
         this._swapChain = this._context.configureSwapChain({
