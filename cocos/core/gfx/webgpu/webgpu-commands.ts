@@ -647,97 +647,14 @@ export function WebGPUCmdFuncCreateBuffer (device: WebGPUDevice, gpuBuffer: IWeb
 }
 
 export function WebGPUCmdFuncDestroyBuffer (device: WebGPUDevice, gpuBuffer: IWebGPUGPUBuffer) {
-    const gl = device.gl;
     if (gpuBuffer.glBuffer) {
-        // Firefox 75+ implicitly unbind whatever buffer there was on the slot sometimes
-        // can be reproduced in the static batching scene at https://github.com/cocos-creator/test-cases-3d
-        switch (gpuBuffer.glTarget) {
-        case gl.ARRAY_BUFFER:
-            if (device.useVAO && device.stateCache.glVAO) {
-                gl.bindVertexArray(null);
-                device.stateCache.glVAO = gfxStateCache.gpuInputAssembler = null;
-            }
-            gl.bindBuffer(gl.ARRAY_BUFFER, null);
-            device.stateCache.glArrayBuffer = null;
-            break;
-        case gl.ELEMENT_ARRAY_BUFFER:
-            if (device.useVAO && device.stateCache.glVAO) {
-                gl.bindVertexArray(null);
-                device.stateCache.glVAO = gfxStateCache.gpuInputAssembler = null;
-            }
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
-            device.stateCache.glElementArrayBuffer = null;
-            break;
-        case gl.UNIFORM_BUFFER:
-            gl.bindBuffer(gl.UNIFORM_BUFFER, null);
-            device.stateCache.glUniformBuffer = null;
-            break;
-        }
-
-        gl.deleteBuffer(gpuBuffer.glBuffer);
-        gpuBuffer.glBuffer = null;
+        gpuBuffer.glBuffer.destroy();
     }
 }
 
 export function WebGPUCmdFuncResizeBuffer (device: WebGPUDevice, gpuBuffer: IWebGPUGPUBuffer) {
-    const gl = device.gl;
-    const cache = device.stateCache;
-    const glUsage: GLenum = gpuBuffer.memUsage & MemoryUsageBit.HOST ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW;
-
-    if (gpuBuffer.usage & BufferUsageBit.VERTEX) {
-        if (device.useVAO) {
-            if (cache.glVAO) {
-                gl.bindVertexArray(null);
-                cache.glVAO = gfxStateCache.gpuInputAssembler = null;
-            }
-        }
-
-        if (cache.glArrayBuffer !== gpuBuffer.glBuffer) {
-            gl.bindBuffer(gl.ARRAY_BUFFER, gpuBuffer.glBuffer);
-        }
-
-        if (gpuBuffer.buffer) {
-            gl.bufferData(gl.ARRAY_BUFFER, gpuBuffer.buffer, glUsage);
-        } else {
-            gl.bufferData(gl.ARRAY_BUFFER, gpuBuffer.size, glUsage);
-        }
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        cache.glArrayBuffer = null;
-    } else if (gpuBuffer.usage & BufferUsageBit.INDEX) {
-        if (device.useVAO) {
-            if (cache.glVAO) {
-                gl.bindVertexArray(null);
-                cache.glVAO = gfxStateCache.gpuInputAssembler = null;
-            }
-        }
-
-        if (device.stateCache.glElementArrayBuffer !== gpuBuffer.glBuffer) {
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gpuBuffer.glBuffer);
-        }
-
-        if (gpuBuffer.buffer) {
-            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, gpuBuffer.buffer, glUsage);
-        } else {
-            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, gpuBuffer.size, glUsage);
-        }
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
-        device.stateCache.glElementArrayBuffer = null;
-    } else if (gpuBuffer.usage & BufferUsageBit.UNIFORM) {
-        if (device.stateCache.glUniformBuffer !== gpuBuffer.glBuffer) {
-            gl.bindBuffer(gl.UNIFORM_BUFFER, gpuBuffer.glBuffer);
-        }
-
-        gl.bufferData(gl.UNIFORM_BUFFER, gpuBuffer.size, glUsage);
-        gl.bindBuffer(gl.UNIFORM_BUFFER, null);
-        device.stateCache.glUniformBuffer = null;
-    } else if ((gpuBuffer.usage & BufferUsageBit.INDIRECT)
-            || (gpuBuffer.usage & BufferUsageBit.TRANSFER_DST)
-            || (gpuBuffer.usage & BufferUsageBit.TRANSFER_SRC)) {
-        gpuBuffer.glTarget = gl.NONE;
-    } else {
-        console.error('Unsupported GFXBufferType, create buffer failed.');
-        gpuBuffer.glTarget = gl.NONE;
-    }
+    WebGPUCmdFuncDestroyBuffer(device, gpuBuffer);
+    WebGPUCmdFuncCreateBuffer(device, gpuBuffer);
 }
 
 export function WebGPUCmdFuncUpdateBuffer (device: WebGPUDevice, gpuBuffer: IWebGPUGPUBuffer, buffer: BufferSource, offset: number, size: number) {
@@ -959,8 +876,17 @@ function removeCombinedSamplerTexture (shaderSource: string) {
             code = code.replace(regStr, `texture(${samplerFunc!}(${textureName}, ${textureName}Sampler)`);
         }
 
+        //----------------
+        // (?<=\()(sampler2D)(?=\W)
+
+        // (?<!vec4 )(CCSampleTexture\(.+\))
+        // const spmlRegStr = `(?<=\\()(${samplerFunc!})(?=\\s)`;
+        // code = code.replace(spmlRegStr, 'sampler');
+
+        //----------------
         return true;
     });
+    code = code.replace(/(?<!vec4 )(CCSampleTexture\(.+\))/g, 'texture(sampler2D(cc_spriteTexture, cc_spriteTextureSampler), uv0)');
     return code;
 }
 
@@ -1325,22 +1251,42 @@ export function WebGPUCmdFuncCopyTexImagesToTexture (
     // });
 
     for (let i = 0; i < regions.length; i++) {
-        const imageData = (texImages[i] as HTMLCanvasElement).getContext('2d')?.getImageData(0, 0, texImages[i].width, texImages[i].height);
-        // new Uint8ClampedArray(nativeBuffer.getMappedRange(
-        //     0,
-        //     imageData!.data.byteLength,
-        // )).set(imageData!.data);
-        // nativeBuffer.unmap();
+        if ('getContext' in  texImages[i]) {
+            const canvasElem = texImages[i] as HTMLCanvasElement;
+            const imageData = canvasElem.getContext('2d')?.getImageData(0, 0, texImages[i].width, texImages[i].height);
+            // new Uint8ClampedArray(nativeBuffer.getMappedRange(
+            //     0,
+            //     imageData!.data.byteLength,
+            // )).set(imageData!.data);
+            // nativeBuffer.unmap();
 
-        const texDataLayout = {
-            bytesPerRow: pixelSize * texImages[i].width,
-        };
-        const textureView:GPUTextureCopyView = {
-            texture: gpuTexture.glTexture!,
-        };
-        nativeDevice.queue.writeTexture(textureView,
-            imageData?.data.buffer as ArrayBuffer, texDataLayout,
-            [regions[i].texExtent.width, regions[i].texExtent.height, regions[i].texExtent.depth]);
+            const texDataLayout = {
+                bytesPerRow: pixelSize * texImages[i].width,
+            };
+            const textureView:GPUTextureCopyView = {
+                texture: gpuTexture.glTexture!,
+            };
+            nativeDevice.queue.writeTexture(textureView,
+                imageData?.data.buffer as ArrayBuffer, texDataLayout,
+                [regions[i].texExtent.width, regions[i].texExtent.height, regions[i].texExtent.depth]);
+        } else {
+            const imageBmp = texImages[i] as ImageBitmap;
+            const textureView:GPUTextureCopyView = {
+                texture: gpuTexture.glTexture!,
+            };
+            nativeDevice.queue.copyImageBitmapToTexture(
+                {
+                    imageBitmap: imageBmp,
+                },
+                textureView,
+                {
+                    width: imageBmp.width,
+                    height: imageBmp.height,
+                    depthOrArrayLayers: 1,
+                },
+            );
+        }
+
         // const commandEncoder = nativeDevice.createCommandEncoder();
         // commandEncoder.copyBufferToTexture(
         //     { buffer: nativeBuffer, bytesPerRow: Math.floor((pixelSize + 255) / 256) * 256 },
