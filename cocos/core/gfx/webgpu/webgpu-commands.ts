@@ -200,8 +200,8 @@ export function GFXFormatToWGPUTextureFormat (format: Format): GPUTextureFormat 
     case Format.BC7_SRGB: return 'bc7-rgba-unorm-srgb';
 
     default: {
-        console.info('Unsupported Format, convert to WebGPU internal format failed.');
-        return 'rgba8unorm';
+        console.info('Unsupported Format, return bgra8unorm indefault.');
+        return 'bgra8unorm';
     }
     }
 }
@@ -865,7 +865,7 @@ function removeCombinedSamplerTexture (shaderSource: string) {
 
         const textureReg = /(?<=binding = )(\d+)(?=\))/g;
         const textureBindingStr = str.match(textureReg)!.toString();
-        const textureBinding = Number(textureBindingStr) + 20;
+        const textureBinding = Number(textureBindingStr) + 16;
         let textureStr = str.replace(textureReg, textureBinding.toString());
         textureStr = textureStr.replace(/(?<=uniform )(sampler)(?=\w*)/g, 'texture');
 

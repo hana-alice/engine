@@ -51,7 +51,7 @@ export class WebGPUDescriptorSetLayout extends DescriptorSetLayout {
                 /* ---------------FIXME: temp solution for combined tex/sampler---------------------*/
                 if (binding.descriptorType === DescriptorType.SAMPLER) {
                     const grpLayoutEntry: GPUBindGroupLayoutEntry = {
-                        binding: binding.binding + 20,
+                        binding: binding.binding + 16,
                         visibility: GLStageToWebGPUStage(binding.stageFlags),
                         type: 'sampled-texture',
                     };

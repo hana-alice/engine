@@ -61,7 +61,7 @@ export class WebGPUDescriptorSet extends DescriptorSet {
                         });
 
                         const bindGrpEntry: GPUBindGroupEntry = {
-                            binding: binding.binding + 20,
+                            binding: binding.binding + 16,
                             resource: texture.glTexture!.createView(),
                         };
                         this._bindGroupEntries.push(bindGrpEntry);
@@ -144,7 +144,7 @@ export class WebGPUDescriptorSet extends DescriptorSet {
                         descriptors[i].gpuTexture = (this._textures[textureIdx] as WebGPUTexture).gpuTexture;
 
                         const bindGrpEntry: GPUBindGroupEntry = {
-                            binding: binding.binding + 20,
+                            binding: binding.binding + 16,
                             resource: descriptors[i].gpuTexture?.glTexture?.createView() as GPUTextureView,
                         };
 
