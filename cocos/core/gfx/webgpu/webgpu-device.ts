@@ -156,10 +156,13 @@ export class WebGPUDevice extends Device {
             format: swapchainFormat,
         });
 
+        this._width = this._canvas.width * info.devicePixelRatio;
+        this._height = this._canvas.height * info.devicePixelRatio;
+
         this._defaultDepthStencilTex = device.createTexture({
             size: {
-                width: this._canvas.width * info.devicePixelRatio,
-                height: this._canvas.height * info.devicePixelRatio,
+                width: this._width,
+                height: this.height,
                 depthOrArrayLayers: 1,
             },
             format: 'depth24plus-stencil8',

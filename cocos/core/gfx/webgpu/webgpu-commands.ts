@@ -668,21 +668,23 @@ export function WebGPUCmdFuncUpdateBuffer (device: WebGPUDevice, gpuBuffer: IWeb
             buff = buff.slice(0, size);
         }
         // gpuBuffer.glbuffer may not able to be mapped directly, so staging buffer here.
-        const stagingBuffer = nativeDevice.createBuffer({
-            size,
-            usage: GPUBufferUsage.COPY_SRC,
-            mappedAtCreation: true,
-        });
-        new Uint8Array(stagingBuffer.getMappedRange(0, size)).set(new Uint8Array(buff));
-        stagingBuffer.unmap();
+        // const stagingBuffer = nativeDevice.createBuffer({
+        //    size,
+        //    usage: GPUBufferUsage.COPY_SRC,
+        //    mappedAtCreation: true,
+        // });
+        // new Uint8Array(stagingBuffer.getMappedRange(0, size)).set(new Uint8Array(buff));
+        // stagingBuffer.unmap();
 
         const cache = device.stateCache;
 
-        const commandEncoder = nativeDevice.createCommandEncoder();
-        commandEncoder.copyBufferToBuffer(stagingBuffer, 0, gpuBuffer.glBuffer as GPUBuffer, offset, size);
-        const commandBuffer = commandEncoder.finish();
-        nativeDevice.queue.submit([commandBuffer]);
-        stagingBuffer.destroy();
+        nativeDevice.queue.writeBuffer(gpuBuffer.glBuffer!, offset, buff);
+
+        // const commandEncoder = nativeDevice.createCommandEncoder();
+        // commandEncoder.copyBufferToBuffer(stagingBuffer, 0, gpuBuffer.glBuffer as GPUBuffer, offset, size);
+        // const commandBuffer = commandEncoder.finish();
+        // nativeDevice.queue.submit([commandBuffer]);
+        // stagingBuffer.destroy();
     }
 }
 

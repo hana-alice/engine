@@ -446,13 +446,16 @@ export class WebGPUCommandBuffer extends CommandBuffer {
                     buff = data;
                 }
 
-                cmd.gpuBuffer = gpuBuffer;
-                cmd.buffer = buff;
-                cmd.offset = (offset !== undefined ? offset : 0);
-                cmd.size = buffSize;
-                this.cmdPackage.updateBufferCmds.push(cmd);
+                const nativeDevice = (this._device as WebGPUDevice).nativeDevice();
+                nativeDevice?.queue.writeBuffer(gpuBuffer.glBuffer!, gpuBuffer.glOffset, buff);
 
-                this.cmdPackage.cmds.push(WebGPUCmd.UPDATE_BUFFER);
+                // cmd.gpuBuffer = gpuBuffer;
+                // cmd.buffer = buff;
+                // cmd.offset = (offset !== undefined ? offset : 0);
+                // cmd.size = buffSize;
+                // this.cmdPackage.updateBufferCmds.push(cmd);
+                //
+                // this.cmdPackage.cmds.push(WebGPUCmd.UPDATE_BUFFER);
             }
         } else {
             console.error('Command \'updateBuffer\' must be recorded outside a render pass.');
