@@ -169,6 +169,13 @@ export class WebGPUDevice extends Device {
             usage: GPUTextureUsage.RENDER_ATTACHMENT,
         });
 
+        this._devicePixelRatio = info.devicePixelRatio || 1.0;
+        this._width = this._canvas.width;
+        this._height = this._canvas.height;
+        this._nativeWidth = Math.max(info.nativeWidth || this._width, 0);
+        this._nativeHeight = Math.max(info.nativeHeight || this._height, 0);
+        this._bindingMappingInfo = info.bindingMappingInfo;
+
         // FIXME: require by query
         this._multiDrawIndirect = false;
 
