@@ -30,8 +30,7 @@ import { WebGPUSampler } from './webgpu-sampler';
 import { WebGPUShader } from './webgpu-shader';
 import { WebGPUStateCache } from './webgpu-state-cache';
 import { WebGPUTexture } from './webgpu-texture';
-import { GFXFormatToWebGLFormat, GFXFormatToWebGLType, WebGPUCmdFuncBlitFramebuffer,
-    WebGPUCmdFuncCopyBuffersToTexture, WebGPUCmdFuncCopyTexImagesToTexture } from './webgpu-commands';
+import { WebGPUCmdFuncCopyBuffersToTexture, WebGPUCmdFuncCopyTexImagesToTexture } from './webgpu-commands';
 import { getTypedArrayConstructor, CommandBufferType, Filter, Format, FormatInfos,
     QueueType, TextureFlagBit, TextureType, TextureUsageBit,  API, Feature, SampleCount, BufferUsageBit, MemoryUsageBit, BufferFlagBit } from '../define';
 import { BufferTextureCopy, Rect } from '../define-class';
@@ -175,9 +174,22 @@ export class WebGPUDevice extends Device {
         this._nativeWidth = Math.max(info.nativeWidth || this._width, 0);
         this._nativeHeight = Math.max(info.nativeHeight || this._height, 0);
         this._bindingMappingInfo = info.bindingMappingInfo;
+        this._uboOffsetAlignment = 256;
 
         // FIXME: require by query
         this._multiDrawIndirect = false;
+
+        this._features.fill(false);
+        this._features[Feature.TEXTURE_FLOAT] = true;
+        this._features[Feature.TEXTURE_HALF_FLOAT] = true;
+        this._features[Feature.FORMAT_RGB8] = true;
+        this._features[Feature.FORMAT_D32F] = true;
+        this._features[Feature.FORMAT_D24S8] = true;
+        this._features[Feature.MSAA] = true;
+        this._features[Feature.ELEMENT_INDEX_UINT] = true;
+        this._features[Feature.INSTANCED_ARRAYS] = true;
+        this._features[Feature.MULTIPLE_RENDER_TARGETS] = true;
+        this._features[Feature.BLEND_MINMAX] = true;
 
         this._queue = this.createQueue(new QueueInfo(QueueType.GRAPHICS));
         this._cmdBuff = this.createCommandBuffer(new CommandBufferInfo(this._queue));

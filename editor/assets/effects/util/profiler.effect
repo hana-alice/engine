@@ -20,6 +20,7 @@ CCEffect %{
 CCProgram profiler-vs %{
   precision mediump float;
   #include <cc-global>
+  #include <morph>
 
   #define ROWS 8 // multiple of 4
   #define COLS 10
@@ -44,16 +45,24 @@ CCProgram profiler-vs %{
     else { return v.w; }
   }
 
+  vec4 pos[3];
+
   vec4 vert () {
     vec4 position = cc_matViewProj * vec4(a_position, 1.0);
     position.xy += offset.xy;
 
-    v_uv = a_color.xy;
+    pos[0] = vec4(0.0, 0.5, 0.0, 1.0);
+    pos[1] = vec4(-0.5, -0.5, 0.0, 1.0);
+    pos[2] = vec4(0.5, -0.5, 0.0, 1.0);
+
+    v_uv = a_color.xy; 
 
     if (a_color.z >= 0.0) {
       float n = getComponent(digits[int(a_color.z)], a_color.w);
       v_uv += vec2(offset.z * n, 0.0);
     }
+
+    position = pos[getVertexId()];
 
     return position;
   }
@@ -67,6 +76,6 @@ CCProgram profiler-fs %{
   uniform sampler2D mainTexture;
 
   vec4 frag () {
-    return CCFragOutput(texture(mainTexture, v_uv));
+    return vec4( 1.0, 0.0, 0.0, 1.0);
   }
 }%

@@ -65,7 +65,7 @@ export interface IWebGPUGPUTexture {
     glFormat: GPUTextureFormat;
     glType: GLenum;                 // data type, gl.UNSIGNED_BYTE
     glUsage: GPUTextureUsageFlags;  // webgl:DYNIMIC_DRAW... -> webGPU:COPY_DST/STORAGE...
-    glTexture: GPUTexture | null;   // native tex handler
+    glTexture: GPUTexture | undefined;   // native tex handler
     glRenderbuffer: null;           // not suitable for webgpu
     glWrapS: GPUAddressMode;        // clamp-to-edge, repeat...
     glWrapT: GPUAddressMode;

@@ -190,10 +190,10 @@ export class WebGPUCommandBuffer extends CommandBuffer {
         //    renderPassEncoder: renpassEncoder!,
         // };
         const vpfunc = (passEncoder: GPURenderPassEncoder) => {
-            passEncoder.setViewport(renderArea.x, renderArea.y, renderArea.width, renderArea.height, 0.0, 1.0);
+            // passEncoder.setViewport(renderArea.x, renderArea.y, renderArea.width, renderArea.height, 0.0, 1.0);
         };
         const srfunc = (passEncoder: GPURenderPassEncoder) => {
-            passEncoder.setScissorRect(renderArea.x, renderArea.y, renderArea.width, renderArea.height);
+            // passEncoder.setScissorRect(renderArea.x, renderArea.y, renderArea.width, renderArea.height);
         };
         this._renderPassFuncQueue.push(vpfunc);
         this._renderPassFuncQueue.push(srfunc);
@@ -207,9 +207,21 @@ export class WebGPUCommandBuffer extends CommandBuffer {
         const nativeDevice = (this._device as WebGPUDevice).nativeDevice();
         const cmdEncoder = nativeDevice?.createCommandEncoder();
         const passEncoder = cmdEncoder?.beginRenderPass(this._nativePassDesc!);
-        this._renderPassFuncQueue.forEach((cb) => {
-            cb(passEncoder!);
-        });
+        // this._renderPassFuncQueue.forEach((cb) => {
+        //     cb(passEncoder!);
+        // });
+
+        if (this._curGPUPipelineState?.nativePipeline) {
+            for (let i = 0; i < this._curGPUDescriptorSets.length; i++) {
+                // FIXME: this is a special sentence that 2 in 3 parameters I'm not certain.
+                    passEncoder!.setBindGroup(i, this._curGPUDescriptorSets[i].bindGroup);
+            }
+
+                passEncoder!.setPipeline(this._curGPUPipelineState?.nativePipeline as GPURenderPipeline);
+                passEncoder?.setVertexBuffer(0, this._curGPUInputAssembler?.gpuVertexBuffers[0].glBuffer as GPUBuffer,
+                    this._curGPUInputAssembler?.gpuVertexBuffers[0].glOffset);
+                passEncoder?.draw(3, 1, 0, 0);
+        }
 
         passEncoder!.endPass();
 
@@ -371,7 +383,8 @@ export class WebGPUCommandBuffer extends CommandBuffer {
                     if (indirectBuffer.drawIndirectByIndex) {
                         const drawFunc = (passEncoder: GPURenderPassEncoder) => {
                             for (let i = 0; i < drawInfoCount; i++) {
-                                passEncoder?.drawIndexedIndirect(indirectBuffer.glBuffer!, indirectBuffer.glOffset + i * Object.keys(DrawInfo).length);
+                                passEncoder?.drawIndexedIndirect(indirectBuffer.glBuffer!,
+                                    indirectBuffer.glOffset + i * Object.keys(DrawInfo).length);
                             }
                         };
                         this._renderPassFuncQueue.push(drawFunc);
@@ -379,7 +392,8 @@ export class WebGPUCommandBuffer extends CommandBuffer {
                         // FIXME: draw IndexedIndirect and Indirect by different buffer
                         const drawFunc = (passEncoder: GPURenderPassEncoder) => {
                             for (let i = 0; i < drawInfoCount; i++) {
-                                passEncoder?.drawIndirect(indirectBuffer.glBuffer!, indirectBuffer.glOffset + i * Object.keys(DrawInfo).length);
+                                passEncoder?.drawIndirect(indirectBuffer.glBuffer!,
+                                    indirectBuffer.glOffset + i * Object.keys(DrawInfo).length);
                             }
                         };
                         this._renderPassFuncQueue.push(drawFunc);
@@ -391,12 +405,13 @@ export class WebGPUCommandBuffer extends CommandBuffer {
 
                 if (drawByIndex) {
                     const drawFunc = (passEncoder: GPURenderPassEncoder) => {
-                        passEncoder?.drawIndexed(ia.indexCount, ia.instanceCount, ia.firstIndex, ia.firstIndex, ia.firstInstance);
+                        // passEncoder?.drawIndexed(ia.indexCount);
+                        passEncoder?.draw(3);
                     };
                     this._renderPassFuncQueue.push(drawFunc);
                 } else {
                     const drawFunc = (passEncoder: GPURenderPassEncoder) => {
-                        passEncoder?.draw(ia.vertexCount, ia.instanceCount, ia.firstVertex, ia.firstInstance);
+                        passEncoder?.draw(3);
                     };
                     this._renderPassFuncQueue.push(drawFunc);
                 }
@@ -447,7 +462,7 @@ export class WebGPUCommandBuffer extends CommandBuffer {
                 }
 
                 const nativeDevice = (this._device as WebGPUDevice).nativeDevice();
-                nativeDevice?.queue.writeBuffer(gpuBuffer.glBuffer!, gpuBuffer.glOffset, buff);
+                nativeDevice?.queue.writeBuffer(gpuBuffer.glBuffer!, gpuBuffer.glOffset, buff as ArrayBuffer);
 
                 // cmd.gpuBuffer = gpuBuffer;
                 // cmd.buffer = buff;
@@ -555,13 +570,13 @@ export class WebGPUCommandBuffer extends CommandBuffer {
             };
             this._renderPassFuncQueue.push(vbFunc);
 
-            const bcFunc = (passEncoder: GPURenderPassEncoder) => {
-                passEncoder.setBlendColor([this._curBlendConstants[0],
-                    this._curBlendConstants[1],
-                    this._curBlendConstants[2],
-                    this._curBlendConstants[3]]);
-            };
-            this._renderPassFuncQueue.push(bcFunc);
+            // const bcFunc = (passEncoder: GPURenderPassEncoder) => {
+            //     passEncoder.setBlendColor([this._curBlendConstants[0],
+            //         this._curBlendConstants[1],
+            //         this._curBlendConstants[2],
+            //         this._curBlendConstants[3]]);
+            // };
+            // this._renderPassFuncQueue.push(bcFunc);
 
             const ibFunc = (passEncoder: GPURenderPassEncoder) => {
                 passEncoder.setIndexBuffer(ia.gpuIndexBuffer?.glBuffer as GPUBuffer,

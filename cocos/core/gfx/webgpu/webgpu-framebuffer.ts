@@ -1,5 +1,4 @@
 import { Framebuffer, FramebufferInfo } from '../framebuffer';
-import { WebGPUCmdFuncCreateFramebuffer, WebGPUCmdFuncDestroyFramebuffer } from './webgpu-commands';
 import { WebGPUDevice } from './webgpu-device';
 import { IWebGPUGPUFramebuffer, IWebGPUGPUTexture } from './webgpu-gpu-objects';
 import { WebGPURenderPass } from './webgpu-render-pass';
@@ -53,14 +52,11 @@ export class WebGPUFramebuffer extends Framebuffer {
             isOffscreen,
         };
 
-        // WebGPUCmdFuncCreateFramebuffer(this._device as WebGPUDevice, this._gpuFramebuffer);
-
         return true;
     }
 
     public destroy () {
         if (this._gpuFramebuffer) {
-            // WebGPUCmdFuncDestroyFramebuffer(this._device as WebGPUDevice, this._gpuFramebuffer);
             this._gpuFramebuffer = null;
         }
     }
