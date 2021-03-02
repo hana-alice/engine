@@ -73,7 +73,7 @@ export class WebGPUPipelineState extends PipelineState {
         // primitive
         renderPplDesc.primitiveTopology = WebPUPrimitives[info.primitive];
 
-        // rs
+        // rs;
         renderPplDesc.rasterizationState = {
             frontFace: this._rs.isFrontFaceCCW ? 'ccw' : 'cw',
             cullMode: this._rs.cullMode === CullMode.NONE ? 'none' : (this._rs.cullMode === CullMode.FRONT) ? 'front' : 'back',
@@ -163,9 +163,9 @@ export class WebGPUPipelineState extends PipelineState {
         if (renderPplDesc.primitiveTopology === 'line-strip' || renderPplDesc.primitiveTopology === 'triangle-strip') {
             renderPplDesc.vertexState.indexFormat = 'uint16';
         }
-        renderPplDesc.sampleCount = 1;
-        renderPplDesc.sampleMask = 0;
-        renderPplDesc.alphaToCoverageEnabled = false;
+        // renderPplDesc.sampleCount = 1;
+        // renderPplDesc.sampleMask = 0;
+        // renderPplDesc.alphaToCoverageEnabled = true;
 
         const nativeDevice = (this._device as WebGPUDevice).nativeDevice();
         const nativePipeline = nativeDevice?.createRenderPipeline(renderPplDesc);
