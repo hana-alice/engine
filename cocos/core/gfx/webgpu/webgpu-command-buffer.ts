@@ -23,7 +23,6 @@ import {
     WebGPUCmdDraw,
     WebGPUCmdPackage,
     WebGPUCmdUpdateBuffer,
-    WebGPUCmdFuncBeginRenderPass,
 } from './webgpu-commands';
 import { WebGPUDevice } from './webgpu-device';
 import { WebGPUFramebuffer } from './webgpu-framebuffer';
@@ -206,22 +205,8 @@ export class WebGPUCommandBuffer extends CommandBuffer {
     public endRenderPass () {
         const nativeDevice = (this._device as WebGPUDevice).nativeDevice();
         const cmdEncoder = nativeDevice?.createCommandEncoder();
-        this._nativePassDesc = {
-            colorAttachments: [{
-                attachment: (this._device as WebGPUDevice).swapChain!.getCurrentTexture().createView(),
-                loadValue: [0.2, 0.2, 0.2, 1.0],
-            }],
-            depthStencilAttachment: {
-                attachment: (this._device as WebGPUDevice).defaultDepthStencilTex!.createView(),
-
-                depthLoadValue: 1.0,
-                depthStoreOp: 'clear',
-
-                stencilLoadValue: 0.0,
-                stencilStoreOp: 'clear',
-            },
-        };
-        const passEncoder = cmdEncoder?.beginRenderPass(this._nativePassDesc);
+        this._nativePassDesc!.colorAttachments[0].attachment = (this._device as WebGPUDevice).swapChain!.getCurrentTexture().createView();
+        const passEncoder = cmdEncoder?.beginRenderPass(this._nativePassDesc!);
         this._renderPassFuncQueue.forEach((cb) => {
             cb(passEncoder!);
         });
@@ -462,7 +447,7 @@ export class WebGPUCommandBuffer extends CommandBuffer {
                 }
 
                 const nativeDevice = (this._device as WebGPUDevice).nativeDevice();
-                nativeDevice?.queue.writeBuffer(gpuBuffer.glBuffer!, gpuBuffer.glOffset, buff);
+                nativeDevice?.queue.writeBuffer(gpuBuffer.glBuffer!, gpuBuffer.glOffset, buff as ArrayBuffer);
 
                 // cmd.gpuBuffer = gpuBuffer;
                 // cmd.buffer = buff;

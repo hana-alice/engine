@@ -194,7 +194,7 @@ export function GFXFormatToWGPUTextureFormat (format: Format): GPUTextureFormat 
     case Format.BC3: return 'bc3-rgba-unorm';
     case Format.BC3_SRGB: return 'bc3-rgba-unorm-srgb';
     case Format.BC4_SNORM: return 'bc4-r-snorm';
-    case Format.BC6H_SF16: return 'bc6h-rgb-sfloat';
+    case Format.BC6H_SF16: return 'bc6h-rgb-float';
     case Format.BC6H_UF16: return 'bc6h-rgb-ufloat';
     case Format.BC7: return 'bc7-rgba-unorm';
     case Format.BC7_SRGB: return 'bc7-rgba-unorm-srgb';
@@ -307,7 +307,6 @@ function WebGLTypeToGFXType (glType: GLenum, gl: WebGL2RenderingContext): Type {
     case gl.UNSIGNED_INT_VEC2: return Type.UINT2;
     case gl.UNSIGNED_INT_VEC3: return Type.UINT3;
     case gl.UNSIGNED_INT_VEC4: return Type.UINT4;
-    case gl.UNSIGNED_INT: return Type.UINT;
     case gl.FLOAT: return Type.FLOAT;
     case gl.FLOAT_VEC2: return Type.FLOAT2;
     case gl.FLOAT_VEC3: return Type.FLOAT3;
@@ -710,7 +709,7 @@ export function WebGPUCmdFuncCreateTexture (device: WebGPUDevice, gpuTexture: IW
         usage: gpuTexture.glUsage,
     };
 
-    gpuTexture.glTexture = device.nativeDevice()?.createTexture(texDescriptor)!;
+    gpuTexture.glTexture = device.nativeDevice()!.createTexture(texDescriptor);
 }
 
 export function WebGPUCmdFuncDestroyTexture (gpuTexture: IWebGPUGPUTexture) {
@@ -754,96 +753,6 @@ export function WebGPUCmdFuncDestroySampler (device: WebGPUDevice, gpuSampler: I
     if (gpuSampler.glSampler) {
         device.gl.deleteSampler(gpuSampler.glSampler);
         gpuSampler.glSampler = null;
-    }
-}
-
-export function WebGPUCmdFuncCreateFramebuffer (device: WebGPUDevice, gpuFramebuffer: IWebGPUGPUFramebuffer) {
-    if (!gpuFramebuffer.gpuColorTextures.length && !gpuFramebuffer.gpuDepthStencilTexture) { return; } // onscreen fbo
-
-    const gl = device.gl;
-    const attachments: GLenum[] = [];
-
-    const glFramebuffer = gl.createFramebuffer();
-    if (glFramebuffer) {
-        gpuFramebuffer.glFramebuffer = glFramebuffer;
-
-        if (device.stateCache.glFramebuffer !== gpuFramebuffer.glFramebuffer) {
-            gl.bindFramebuffer(gl.FRAMEBUFFER, gpuFramebuffer.glFramebuffer);
-        }
-
-        for (let i = 0; i < gpuFramebuffer.gpuColorTextures.length; ++i) {
-            const colorTexture = gpuFramebuffer.gpuColorTextures[i];
-            if (colorTexture) {
-                if (colorTexture.glTexture) {
-                    gl.framebufferTexture2D(
-                        gl.FRAMEBUFFER,
-                        gl.COLOR_ATTACHMENT0 + i,
-                        colorTexture.glTarget,
-                        colorTexture.glTexture,
-                        0,
-                    ); // level should be 0.
-                } else {
-                    gl.framebufferRenderbuffer(
-                        gl.FRAMEBUFFER,
-                        gl.COLOR_ATTACHMENT0 + i,
-                        gl.RENDERBUFFER,
-                        colorTexture.glRenderbuffer,
-                    );
-                }
-
-                attachments.push(gl.COLOR_ATTACHMENT0 + i);
-            }
-        }
-
-        const dst = gpuFramebuffer.gpuDepthStencilTexture;
-        if (dst) {
-            const glAttachment = FormatInfos[dst.format].hasStencil ? gl.DEPTH_STENCIL_ATTACHMENT : gl.DEPTH_ATTACHMENT;
-            if (dst.glTexture) {
-                gl.framebufferTexture2D(
-                    gl.FRAMEBUFFER,
-                    glAttachment,
-                    dst.glTarget,
-                    dst.glTexture,
-                    0,
-                ); // level must be 0
-            } else {
-                gl.framebufferRenderbuffer(
-                    gl.FRAMEBUFFER,
-                    glAttachment,
-                    gl.RENDERBUFFER,
-                    dst.glRenderbuffer,
-                );
-            }
-        }
-
-        gl.drawBuffers(attachments);
-
-        const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
-        if (status !== gl.FRAMEBUFFER_COMPLETE) {
-            switch (status) {
-            case gl.FRAMEBUFFER_INCOMPLETE_ATTACHMENT: {
-                console.error('glCheckFramebufferStatus() - FRAMEBUFFER_INCOMPLETE_ATTACHMENT');
-                break;
-            }
-            case gl.FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: {
-                console.error('glCheckFramebufferStatus() - FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT');
-                break;
-            }
-            case gl.FRAMEBUFFER_INCOMPLETE_DIMENSIONS: {
-                console.error('glCheckFramebufferStatus() - FRAMEBUFFER_INCOMPLETE_DIMENSIONS');
-                break;
-            }
-            case gl.FRAMEBUFFER_UNSUPPORTED: {
-                console.error('glCheckFramebufferStatus() - FRAMEBUFFER_UNSUPPORTED');
-                break;
-            }
-            default:
-            }
-        }
-
-        if (device.stateCache.glFramebuffer !== gpuFramebuffer.glFramebuffer) {
-            gl.bindFramebuffer(gl.FRAMEBUFFER, device.stateCache.glFramebuffer);
-        }
     }
 }
 
@@ -929,6 +838,127 @@ export function WebGPUCmdFuncCreateShader (device: WebGPUDevice, gpuShader: IWeb
         const useWGSL = false;
         let sourceCode = `#version 450\n${gpuStage.source}`;
         sourceCode = removeCombinedSamplerTexture(sourceCode);
+        const test = true;
+        if (test) {
+            if (gpuShader.name === 'sprite|sprite-vs:vert|sprite-fs:frag|USE_TEXTURE1' && shaderTypeStr === 'vertex') {
+                sourceCode = `#version 450
+            #define USE_LOCAL 0
+            #define USE_PIXEL_ALIGNMENT 0
+            #define CC_USE_EMBEDDED_ALPHA 0
+            #define USE_ALPHA_TEST 0
+            #define USE_TEXTURE 1
+            #define IS_GRAY 0
+
+            layout(set = 0, binding = 0) uniform CCGlobal {
+                vec4 cc_time;
+                vec4 cc_screenSize;
+                vec4 cc_nativeSize;
+            };
+            layout(set = 0, binding = 1) uniform CCCamera {
+              mat4 cc_matView;
+              mat4 cc_matViewInv;
+              mat4 cc_matProj;
+              mat4 cc_matProjInv;
+              mat4 cc_matViewProj;
+              mat4 cc_matViewProjInv;
+              vec4 cc_cameraPos;
+              vec4 cc_screenScale;
+              vec4 cc_exposure;
+              vec4 cc_mainLitDir;
+              vec4 cc_mainLitColor;
+              vec4 cc_ambientSky;
+              vec4 cc_ambientGround;
+              vec4 cc_fogColor;
+              vec4 cc_fogBase;
+              vec4 cc_fogAdd;
+            };
+            #if USE_LOCAL
+            layout(set = 2, binding = 0) uniform CCLocal {
+              mat4 cc_matWorld;
+              mat4 cc_matWorldIT;
+              vec4 cc_lightingMapUVParam;
+            };
+            #endif
+            layout(location = 0) in vec3 a_position;
+            layout(location = 1) in vec2 a_texCoord;
+            layout(location = 2) in vec4 a_color;
+            layout(location = 0) out vec4 color;
+            layout(location = 1) out vec2 uv0;
+            vec4 vert () {
+              vec4 pos = vec4(a_position, 1);
+              #if USE_LOCAL
+                pos = cc_matWorld * pos;
+              #endif
+              #if USE_PIXEL_ALIGNMENT
+                pos = cc_matView * pos;
+                pos.xyz = floor(pos.xyz);
+                pos = cc_matProj * pos;
+              #else
+                pos = cc_matViewProj * pos;
+              #endif
+              uv0 = a_texCoord;
+              color = a_color;
+              return pos;
+            }
+            void main() { gl_Position = vert(); }`;
+            }
+            if (gpuShader.name === 'sprite|sprite-vs:vert|sprite-fs:frag|USE_TEXTURE1' && shaderTypeStr === 'fragment') {
+                sourceCode = `#version 450
+            #define USE_LOCAL 0
+            #define USE_PIXEL_ALIGNMENT 0
+            #define CC_USE_EMBEDDED_ALPHA 0
+            #define USE_ALPHA_TEST 0
+            #define USE_TEXTURE 1
+            #define IS_GRAY 0
+            
+            
+            precision highp float;
+            vec4 CCSampleTexture(sampler2D tex, vec2 uv) {
+            #if CC_USE_EMBEDDED_ALPHA
+                return vec4(texture(tex, uv).rgb, texture(tex, uv + vec2(0.0, 0.5)).r);
+            #else
+                return texture(tex, uv);
+            #endif
+            }
+            #if USE_ALPHA_TEST
+              layout(set = 1, binding = 0) uniform ALPHA_TEST_DATA {
+                float alphaThreshold;
+              };
+            #endif
+            void ALPHA_TEST (in vec4 color) {
+              #if USE_ALPHA_TEST
+                  if (color.a < alphaThreshold) discard;
+              #endif
+            }
+            void ALPHA_TEST (in float alpha) {
+              #if USE_ALPHA_TEST
+                  if (alpha < alphaThreshold) discard;
+              #endif
+            }
+            layout(location = 0) in vec4 color;
+            #if USE_TEXTURE
+              layout(location = 1) in vec2 uv0;
+              layout(set = 2, binding = 10) uniform sampler cc_spriteTextureSampler;
+            layout(set = 2, binding = 26) uniform texture2D cc_spriteTexture;
+            #endif
+            vec4 frag () {
+              vec4 o = vec4(1, 1, 1, 1);
+              #if USE_TEXTURE
+                o *= texture(sampler2D(cc_spriteTexture, cc_spriteTextureSampler), uv0);
+                #if IS_GRAY
+                  float gray  = 0.2126 * o.r + 0.7152 * o.g + 0.0722 * o.b;
+                  o.r = o.g = o.b = gray;
+                #endif
+              #endif
+              o *= color;
+              //ALPHA_TEST(o);
+              return vec4(1.0, 0.0, 0.0, 1.0);
+              //return o;
+            }
+            layout(location = 0) out vec4 cc_FragColor;
+            void main() { cc_FragColor = frag(); }`;
+            }
+        }
         const code = useWGSL ? sourceCode : glslang.compileGLSL(sourceCode, shaderTypeStr, true);
         const shader: GPUShaderModule = nativeDevice?.createShaderModule({ code });
         // shader.compilationInfo().then((compileInfo: GPUCompilationInfo) => {
@@ -1016,56 +1046,6 @@ const gfxStateCache: IWebGPUStateCache = {
     glPrimitive: 'triangle-list',
     invalidateAttachments: [],
 };
-
-export function WebGPUCmdFuncDraw (device: WebGPUDevice, drawInfo: DrawInfo) {
-    const gl = device.gl;
-    const { gpuInputAssembler, glPrimitive } = gfxStateCache;
-
-    if (gpuInputAssembler) {
-        if (gpuInputAssembler.gpuIndirectBuffer) {
-            const indirects = gpuInputAssembler.gpuIndirectBuffer.indirects;
-            for (let k = 0; k < indirects.length; k++) {
-                const subDrawInfo = indirects[k];
-                const gpuBuffer = gpuInputAssembler.gpuIndexBuffer;
-                if (subDrawInfo.instanceCount) {
-                    if (gpuBuffer) {
-                        if (subDrawInfo.indexCount > 0) {
-                            const offset = subDrawInfo.firstIndex * gpuBuffer.stride;
-                            gl.drawElementsInstanced(glPrimitive, subDrawInfo.indexCount,
-                                gpuInputAssembler.glIndexType, offset, subDrawInfo.instanceCount);
-                        }
-                    } else if (subDrawInfo.vertexCount > 0) {
-                        gl.drawArraysInstanced(glPrimitive, subDrawInfo.firstVertex, subDrawInfo.vertexCount, subDrawInfo.instanceCount);
-                    }
-                } else if (gpuBuffer) {
-                    if (subDrawInfo.indexCount > 0) {
-                        const offset = subDrawInfo.firstIndex * gpuBuffer.stride;
-                        gl.drawElements(glPrimitive, subDrawInfo.indexCount, gpuInputAssembler.glIndexType, offset);
-                    }
-                } else if (subDrawInfo.vertexCount > 0) {
-                    gl.drawArrays(glPrimitive, subDrawInfo.firstVertex, subDrawInfo.vertexCount);
-                }
-            }
-        } else if (drawInfo.instanceCount) {
-            if (gpuInputAssembler.gpuIndexBuffer) {
-                if (drawInfo.indexCount > 0) {
-                    const offset = drawInfo.firstIndex * gpuInputAssembler.gpuIndexBuffer.stride;
-                    gl.drawElementsInstanced(glPrimitive, drawInfo.indexCount,
-                        gpuInputAssembler.glIndexType, offset, drawInfo.instanceCount);
-                }
-            } else if (drawInfo.vertexCount > 0) {
-                gl.drawArraysInstanced(glPrimitive, drawInfo.firstVertex, drawInfo.vertexCount, drawInfo.instanceCount);
-            }
-        } else if (gpuInputAssembler.gpuIndexBuffer) {
-            if (drawInfo.indexCount > 0) {
-                const offset = drawInfo.firstIndex * gpuInputAssembler.gpuIndexBuffer.stride;
-                gl.drawElements(glPrimitive, drawInfo.indexCount, gpuInputAssembler.glIndexType, offset);
-            }
-        } else if (drawInfo.vertexCount > 0) {
-            gl.drawArrays(glPrimitive, drawInfo.firstVertex, drawInfo.vertexCount);
-        }
-    }
-}
 
 function maxElementOfImageArray (bufInfoArr: BufferTextureCopy[]): number {
     let maxSize = 0;

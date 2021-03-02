@@ -19,6 +19,9 @@ export class WebGPUBuffer extends Buffer {
 
     public initialize (info: BufferInfo | BufferViewInfo): boolean {
         if ('buffer' in info) { // buffer view
+            // validate: webGPU buffer offset must be 256 bytes aligned
+            // which can be guaranteed by WebGPUDevice::uboOffsetAligned
+
             this._isBufferView = true;
 
             const buffer = info.buffer as WebGPUBuffer;
@@ -41,20 +44,6 @@ export class WebGPUBuffer extends Buffer {
                 glOffset: info.offset,
                 drawIndirectByIndex: false,
             };
-            if (info.buffer.usage & BufferUsageBit.VERTEX) {
-                // const a = 0;
-            } else if (info.offset % 256 !== 0) {
-                this._isBufferView = false;
-                if (this._usage & BufferUsageBit.INDIRECT) {
-                    this._indirectBuffer = new IndirectBuffer();
-                }
-
-                this._gpuBuffer.glOffset = 0;
-
-                WebGPUCmdFuncCreateBuffer(this._device as WebGPUDevice, this._gpuBuffer);
-
-                this._device.memoryStatus.bufferSize += this._size;
-            }
         } else { // native buffer
             this._usage = info.usage;
             this._memUsage = info.memUsage;
