@@ -391,12 +391,14 @@ export class WebGPUCommandBuffer extends CommandBuffer {
 
                 if (drawByIndex) {
                     const drawFunc = (passEncoder: GPURenderPassEncoder) => {
-                        passEncoder?.drawIndexed(ia.indexCount, ia.instanceCount, ia.firstIndex, ia.firstVertex, ia.firstInstance);
+                        const instanceCount = Math.max(ia.instanceCount, 1);
+                        passEncoder?.drawIndexed(ia.indexCount, instanceCount, ia.firstIndex, ia.firstVertex, ia.firstInstance);
                     };
                     this._renderPassFuncQueue.push(drawFunc);
                 } else {
                     const drawFunc = (passEncoder: GPURenderPassEncoder) => {
-                        passEncoder?.draw(ia.vertexCount, ia.instanceCount, ia.firstVertex, ia.firstInstance);
+                        const instanceCount = Math.max(ia.instanceCount, 1);
+                        passEncoder?.draw(ia.vertexCount, instanceCount, ia.firstVertex, ia.firstInstance);
                     };
                     this._renderPassFuncQueue.push(drawFunc);
                 }

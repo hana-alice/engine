@@ -175,6 +175,8 @@ export class WebGPUDevice extends Device {
         this._nativeHeight = Math.max(info.nativeHeight || this._height, 0);
         this._bindingMappingInfo = info.bindingMappingInfo;
         this._uboOffsetAlignment = 256;
+        this._clipSpaceMinZ = 0.0;
+        this._colorFmt = Format.BGRA8;
 
         // FIXME: require by query
         this._multiDrawIndirect = false;

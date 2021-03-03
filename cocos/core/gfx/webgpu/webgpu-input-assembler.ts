@@ -29,9 +29,6 @@ export class WebGPUInputAssembler extends InputAssembler {
             this._vertexCount = vertBuff.size / vertBuff.stride;
         }
 
-        // FIXME: nowhere passed in
-        this._instanceCount = 1;
-
         this._indirectBuffer = info.indirectBuffer || null;
 
         const gpuVertexBuffers: IWebGPUGPUBuffer[] = new Array<IWebGPUGPUBuffer>(info.vertexBuffers.length);
