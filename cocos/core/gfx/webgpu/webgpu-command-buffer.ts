@@ -175,10 +175,10 @@ export class WebGPUCommandBuffer extends CommandBuffer {
             const depthTex = tex ? tex.createView() : gpuDevice.defaultDepthStencilTex?.createView();
             this._nativePassDesc.depthStencilAttachment = {
                 attachment: depthTex!,
-                depthLoadValue: clearDepth,
+                depthLoadValue: gpuRenderPass.depthStencilAttachment.depthLoadOp === LoadOp.LOAD ? 'load' : clearDepth,
                 depthStoreOp: gpuRenderPass.depthStencilAttachment.depthStoreOp === StoreOp.STORE ? 'store' : 'clear',
                 // depthReadOnly:
-                stencilLoadValue: clearStencil,
+                stencilLoadValue: gpuRenderPass.depthStencilAttachment.stencilLoadOp === LoadOp.LOAD ? 'load' : clearStencil,
                 stencilStoreOp: gpuRenderPass.depthStencilAttachment.stencilStoreOp === StoreOp.STORE ? 'store' : 'clear',
                 // stencilReadOnly:
             };
