@@ -2,7 +2,7 @@ import { PipelineState, PipelineStateInfo } from '../pipeline-state';
 import { IWebGPUGPUPipelineState } from './webgpu-gpu-objects';
 import { WebGPURenderPass } from './webgpu-render-pass';
 import { WebGPUShader } from './webgpu-shader';
-import { CullMode, DynamicStateFlagBit, FormatInfos, ShaderStageFlagBit } from '../define';
+import { CullMode, DynamicStateFlagBit, FormatInfos, ShaderStageFlagBit, ShaderStageFlags } from '../define';
 import { WebGPUPipelineLayout } from './webgpu-pipeline-layout';
 import { WebGPUDevice } from './webgpu-device';
 import { GFXFormatToWGPUFormat,
@@ -55,33 +55,27 @@ export class WebGPUPipelineState extends PipelineState {
             }
         }
 
-        const renderPplDesc = {} as GPURenderPipelineDescriptor;
-
-        // pipelinelayout
-        const nativePipelineLayout = (this._pipelineLayout as WebGPUPipelineLayout).gpuPipelineLayout.nativePipelineLayout;
-        renderPplDesc.layout = nativePipelineLayout;
-
-        const lyt = (this._pipelineLayout as WebGPUPipelineLayout);
-
-        // shadestage
+        let vertexStage;
+        let fragmentStage;
         const shaderStages = (this._shader as WebGPUShader).gpuShader.gpuStages;
         for (let i = 0; i < shaderStages.length; i++) {
-            if (shaderStages[i].type === ShaderStageFlagBit.VERTEX) { renderPplDesc.vertexStage = shaderStages[i].glShader!; }
-            if (shaderStages[i].type === ShaderStageFlagBit.FRAGMENT) { renderPplDesc.fragmentStage = shaderStages[i].glShader!; }
+            if (shaderStages[i].type === ShaderStageFlagBit.VERTEX) { vertexStage = shaderStages[i].glShader!; }
+            if (shaderStages[i].type === ShaderStageFlagBit.FRAGMENT) { fragmentStage = shaderStages[i].glShader!; }
         }
 
-        // primitive
-        renderPplDesc.primitiveTopology = WebPUPrimitives[info.primitive];
-
-        // rs;
-        renderPplDesc.rasterizationState = {
-            frontFace: this._rs.isFrontFaceCCW ? 'ccw' : 'cw',
-            cullMode: this._rs.cullMode === CullMode.NONE ? 'none' : (this._rs.cullMode === CullMode.FRONT) ? 'front' : 'back',
-            clampDepth: this._rs.isDepthClip,
-            depthBias: this._rs.depthBias,
-            depthBiasSlopeScale: this._rs.depthBiasSlop,
-            depthBiasClamp: this._rs.depthBiasClamp,
-        };
+        const gpuShader = info.shader as WebGPUShader;
+        const attrs = gpuShader.attributes;
+        const vbAttrDescs: GPUVertexAttributeDescriptor[] = [];
+        let offset = 0;
+        for (let i = 0; i < attrs.length; i++) {
+            const attrDesc = {
+                format: GFXFormatToWGPUVertexFormat(attrs[i].format),
+                offset,
+                shaderLocation: attrs[i].location,
+            };
+            offset += FormatInfos[attrs[i].format].size;
+            vbAttrDescs.push(attrDesc);
+        }
 
         // colorstates
         const colorAttachments = this._renderPass.colorAttachments;
@@ -102,7 +96,35 @@ export class WebGPUPipelineState extends PipelineState {
                 writeMask: this._bs.targets[i].blendColorMask,
             });
         }
-        renderPplDesc.colorStates = colorDescs;
+
+        const renderPplDesc: GPURenderPipelineDescriptor = {
+            layout: (this._pipelineLayout as WebGPUPipelineLayout).gpuPipelineLayout.nativePipelineLayout,
+            vertexStage,
+            primitiveTopology: WebPUPrimitives[info.primitive],
+            vertexState: {
+                vertexBuffers: [
+                    {
+                        arrayStride: offset,
+                        attributes: vbAttrDescs,
+                    },
+                ],
+            },
+            rasterizationState: {
+                frontFace: this._rs.isFrontFaceCCW ? 'ccw' : 'cw',
+                cullMode: this._rs.cullMode === CullMode.NONE ? 'none' : (this._rs.cullMode === CullMode.FRONT) ? 'front' : 'back',
+                clampDepth: this._rs.isDepthClip,
+                depthBias: this._rs.depthBias,
+                depthBiasSlopeScale: this._rs.depthBiasSlop,
+                depthBiasClamp: this._rs.depthBiasClamp,
+            },
+            colorStates: colorDescs,
+        };
+
+        const lyt = (this._pipelineLayout as WebGPUPipelineLayout);
+
+        if (fragmentStage) {
+            renderPplDesc.fragmentStage = fragmentStage;
+        }
 
         // depthstencil states
         if (this._renderPass.depthStencilAttachment) {
@@ -137,31 +159,12 @@ export class WebGPUPipelineState extends PipelineState {
             dssDesc.stencilWriteMask = stencilWriteMask;
             renderPplDesc.depthStencilState = dssDesc;
         }
-        const gpuShader = info.shader as WebGPUShader;
-        const attrs = gpuShader.attributes;
+
         // -------optional-------
         // renderPplDesc.vertexState = {};
-        const vbAttrDescs: GPUVertexAttributeDescriptor[] = [];
-        let offset = 0;
-        for (let i = 0; i < attrs.length; i++) {
-            const attrDesc = {
-                format: GFXFormatToWGPUVertexFormat(attrs[i].format),
-                offset,
-                shaderLocation: attrs[i].location,
-            };
-            offset += FormatInfos[attrs[i].format].size;
-            vbAttrDescs.push(attrDesc);
-        }
-        renderPplDesc.vertexState = {
-            vertexBuffers: [
-                {
-                    arrayStride: offset,
-                    attributes: vbAttrDescs,
-                },
-            ],
-        };
+
         if (renderPplDesc.primitiveTopology === 'line-strip' || renderPplDesc.primitiveTopology === 'triangle-strip') {
-            renderPplDesc.vertexState.indexFormat = 'uint16';
+            renderPplDesc.vertexState!.indexFormat = 'uint16';
         }
         // renderPplDesc.sampleCount = 1;
         // renderPplDesc.sampleMask = 0;

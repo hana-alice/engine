@@ -4,6 +4,7 @@ import { CommandBuffer, CommandBufferInfo } from '../command-buffer';
 import {
     BufferUsageBit,
     CommandBufferType,
+    LoadOp,
     StencilFace,
     StoreOp,
 } from '../define';
@@ -163,7 +164,8 @@ export class WebGPUCommandBuffer extends CommandBuffer {
             colorTex!.label = gpuFramebuffer.isOffscreen ? 'offscr' : 'swapchain';
             this._nativePassDesc.colorAttachments[i] = {
                 attachment: colorTex,
-                loadValue: [clearColors[i].x, clearColors[i].y, clearColors[i].z, clearColors[i].w], // RGBA
+                loadValue: gpuRenderPass?.colorAttachments[i].loadOp === LoadOp.LOAD
+                    ? 'load' : [clearColors[i].x, clearColors[i].y, clearColors[i].z, clearColors[i].w], // RGBA
                 storeOp: gpuRenderPass?.colorAttachments[i].storeOp === StoreOp.STORE ? 'store' : 'clear',
             };
         }
@@ -205,7 +207,7 @@ export class WebGPUCommandBuffer extends CommandBuffer {
     public endRenderPass () {
         const nativeDevice = (this._device as WebGPUDevice).nativeDevice();
         const cmdEncoder = nativeDevice?.createCommandEncoder();
-        this._nativePassDesc!.colorAttachments[0].attachment = (this._device as WebGPUDevice).swapChain!.getCurrentTexture().createView();
+        // this._nativePassDesc!.colorAttachments[0].attachment = (this._device as WebGPUDevice).swapChain!.getCurrentTexture().createView();
         const passEncoder = cmdEncoder?.beginRenderPass(this._nativePassDesc!);
         this._renderPassFuncQueue.forEach((cb) => {
             cb(passEncoder!);
