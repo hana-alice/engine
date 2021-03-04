@@ -1,7 +1,7 @@
 import { color } from '../../math';
 import { RenderPass, RenderPassInfo } from '../render-pass';
 import { IWebGPUGPURenderPass } from './webgpu-gpu-objects';
-import { StoreOp } from '../define';
+import { LoadOp, StoreOp } from '../define';
 import {  } from '../../utils/js';
 
 export class WebGPURenderPass extends RenderPass {
@@ -18,31 +18,32 @@ export class WebGPURenderPass extends RenderPass {
             this._subPasses = info.subPasses;
         }
 
-        const renderPassDesc = {} as GPURenderPassDescriptor;
-
         const colorDescriptions: GPURenderPassColorAttachmentDescriptor[] = [];
         for (const attachment of info.colorAttachments) {
             colorDescriptions[colorDescriptions.length] = {
-                attachment: {} as GPUTextureView,
-                loadValue: 'load',
+                attachment: {} as GPUTextureView, // later
+                loadValue: attachment.loadOp === LoadOp.LOAD ? 'load' : [1, 1, 1, 1], // what ever as long as not 'load'
                 storeOp: attachment.storeOp === StoreOp.STORE ? 'store' : 'clear',
             };
         }
-        renderPassDesc.colorAttachments = colorDescriptions;
+
+        const renderPassDesc: GPURenderPassDescriptor = {
+            colorAttachments: colorDescriptions,
+        };
 
         if (info.depthStencilAttachment) {
             const depthStencilDescriptor = {} as GPURenderPassDepthStencilAttachmentDescriptor;
-            depthStencilDescriptor.depthLoadValue = 'load';
+            depthStencilDescriptor.depthLoadValue = 1.0;
             depthStencilDescriptor.depthStoreOp = info.depthStencilAttachment?.depthStoreOp === StoreOp.STORE ? 'store' : 'clear';
-            depthStencilDescriptor.stencilLoadValue = 'load';
+            depthStencilDescriptor.stencilLoadValue = 0.0;
             depthStencilDescriptor.stencilStoreOp = info.depthStencilAttachment?.stencilStoreOp === StoreOp.STORE ? 'store' : 'clear';
             depthStencilDescriptor.attachment = {} as GPUTextureView;
 
             renderPassDesc.depthStencilAttachment = {
-                attachment: {} as GPUTextureView,
-                depthLoadValue: 'load',
+                attachment: {} as GPUTextureView, // later
+                depthLoadValue: info.depthStencilAttachment.depthLoadOp === LoadOp.LOAD ? 'load' : 1.0, // what ever as long as not 'load'
                 depthStoreOp: info.depthStencilAttachment?.depthStoreOp === StoreOp.STORE ? 'store' : 'clear',
-                stencilLoadValue: 'load',
+                stencilLoadValue: info.depthStencilAttachment.stencilLoadOp === LoadOp.LOAD ? 'load' : 0.0, // what ever as long as not 'load'
                 stencilStoreOp: info.depthStencilAttachment?.stencilStoreOp === StoreOp.STORE ? 'store' : 'clear',
             };
         }
