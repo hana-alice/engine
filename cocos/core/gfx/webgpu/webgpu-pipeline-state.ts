@@ -5,12 +5,14 @@ import { WebGPUShader } from './webgpu-shader';
 import { CullMode, DynamicStateFlagBit, FormatInfos, ShaderStageFlagBit, ShaderStageFlags } from '../define';
 import { WebGPUPipelineLayout } from './webgpu-pipeline-layout';
 import { WebGPUDevice } from './webgpu-device';
-import { GFXFormatToWGPUFormat,
+import {
+    GFXFormatToWGPUFormat,
     WebGPUBlendFactors,
     WebGPUBlendOps,
     WebGPUCompereFunc,
     WebGPUStencilOp,
     GFXFormatToWGPUVertexFormat,
+    WebGPUBlendMask,
 } from './webgpu-commands';
 
 const WebPUPrimitives: GPUPrimitiveTopology[] = [
@@ -31,13 +33,13 @@ const WebPUPrimitives: GPUPrimitiveTopology[] = [
 ];
 
 export class WebGPUPipelineState extends PipelineState {
-    get gpuPipelineState (): IWebGPUGPUPipelineState {
-        return  this._gpuPipelineState!;
+    get gpuPipelineState(): IWebGPUGPUPipelineState {
+        return this._gpuPipelineState!;
     }
 
     private _gpuPipelineState: IWebGPUGPUPipelineState | null = null;
 
-    public initialize (info: PipelineStateInfo): boolean {
+    public initialize(info: PipelineStateInfo): boolean {
         this._primitive = info.primitive;
         this._shader = info.shader;
         this._pipelineLayout = info.pipelineLayout;
@@ -53,6 +55,26 @@ export class WebGPUPipelineState extends PipelineState {
             if (this._dynamicStates & (1 << i)) {
                 dynamicStates.push(1 << i);
             }
+        }
+
+        // colorstates
+        const colorAttachments = this._renderPass.colorAttachments;
+        const colorDescs: GPUColorStateDescriptor[] = [];
+        for (let i = 0; i < colorAttachments.length; i++) {
+            colorDescs.push({
+                format: GFXFormatToWGPUFormat(colorAttachments[i].format),
+                alphaBlend: {
+                    dstFactor: WebGPUBlendFactors[this._bs.targets[i].blendDstAlpha],
+                    operation: WebGPUBlendOps[this._bs.targets[i].blendAlphaEq],
+                    srcFactor: WebGPUBlendFactors[this._bs.targets[i].blendSrcAlpha],
+                },
+                colorBlend: {
+                    dstFactor: WebGPUBlendFactors[this._bs.targets[i].blendDst],
+                    operation: WebGPUBlendOps[this._bs.targets[i].blendEq],
+                    srcFactor: WebGPUBlendFactors[this._bs.targets[i].blendSrc],
+                },
+                writeMask: WebGPUBlendMask(this._bs.targets[i].blendColorMask),
+            });
         }
 
         let vertexStage;
@@ -75,26 +97,6 @@ export class WebGPUPipelineState extends PipelineState {
             };
             offset += FormatInfos[attrs[i].format].size;
             vbAttrDescs.push(attrDesc);
-        }
-
-        // colorstates
-        const colorAttachments = this._renderPass.colorAttachments;
-        const colorDescs: GPUColorStateDescriptor[] = [];
-        for (let i = 0; i < colorAttachments.length; i++) {
-            colorDescs.push({
-                format: GFXFormatToWGPUFormat(colorAttachments[i].format),
-                alphaBlend: {
-                    dstFactor: WebGPUBlendFactors[this._bs.targets[i].blendDstAlpha],
-                    operation: WebGPUBlendOps[this._bs.targets[i].blendAlphaEq],
-                    srcFactor: WebGPUBlendFactors[this._bs.targets[i].blendSrcAlpha],
-                },
-                colorBlend: {
-                    dstFactor: WebGPUBlendFactors[this._bs.targets[i].blendDst],
-                    operation: WebGPUBlendOps[this._bs.targets[i].blendEq],
-                    srcFactor: WebGPUBlendFactors[this._bs.targets[i].blendSrc],
-                },
-                writeMask: this._bs.targets[i].blendColorMask,
-            });
         }
 
         const renderPplDesc: GPURenderPipelineDescriptor = {
@@ -191,7 +193,7 @@ export class WebGPUPipelineState extends PipelineState {
         return true;
     }
 
-    public destroy () {
+    public destroy() {
         this._gpuPipelineState = null;
     }
 }
