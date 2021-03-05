@@ -536,28 +536,46 @@ export class WebGPUCommandBuffer extends CommandBuffer {
         if (this._curGPUPipelineState) {
             const { dynamicOffsetIndices } = this._curGPUPipelineState?.gpuPipelineLayout as IWebGPUGPUPipelineLayout;
 
+            // ----------------------------wgpu pipline state-----------------------------
             const wgpuPipeline = this._curGPUPipelineState?.nativePipeline as GPURenderPipeline;
             const pplFunc = (passEncoder: GPURenderPassEncoder) => {
                 passEncoder.setPipeline(wgpuPipeline);
             };
             this._renderPassFuncQueue.push(pplFunc);
 
+            // ---------------------------- wgpu bind group  -----------------------------
+            // FIXME: maybe store an array-of-native-pipelinestate to avoid mem realloc
+            const wgpuBindGroups = new Array<GPUBindGroup>(this._curGPUDescriptorSets.length);
+            for (let i = 0; i < this._curGPUDescriptorSets.length; i++) {
+                wgpuBindGroups[i] = this._curGPUDescriptorSets[i].bindGroup;
+            }
             const bgfunc = (passEncoder: GPURenderPassEncoder) => {
-                for (let i = 0; i < this._curGPUDescriptorSets.length; i++) {
+                for (let i = 0; i < wgpuBindGroups.length; i++) {
                 // FIXME: this is a special sentence that 2 in 3 parameters I'm not certain.
-                    passEncoder.setBindGroup(i, this._curGPUDescriptorSets[i].bindGroup);
+                    passEncoder.setBindGroup(i, wgpuBindGroups[i]);
                 }
             };
             this._renderPassFuncQueue.push(bgfunc);
 
+            // ---------------------------- wgpu input assembly  -----------------------------
             const ia = this._curGPUInputAssembler!;
+            const wgpuVertexBuffers = new Array<{slot: number, buffer: GPUBuffer, offset: number}>(ia.gpuVertexBuffers.length);
+            for (let i = 0; i < ia.gpuVertexBuffers.length; i++) {
+                wgpuVertexBuffers[i] = { slot: i, buffer: ia.gpuVertexBuffers[i].glBuffer!, offset: ia.gpuVertexBuffers[i].glOffset };
+            }
 
             const vbFunc = (passEncoder: GPURenderPassEncoder) => {
-                for (let i = 0; i < ia.gpuVertexBuffers.length; i++) {
-                    passEncoder.setVertexBuffer(i, ia.gpuVertexBuffers[i].glBuffer!, ia.gpuVertexBuffers[i].glOffset);
+                for (let i = 0; i < wgpuVertexBuffers.length; i++) {
+                    passEncoder.setVertexBuffer(wgpuVertexBuffers[i].slot, wgpuVertexBuffers[i].buffer, wgpuVertexBuffers[i].offset);
                 }
             };
             this._renderPassFuncQueue.push(vbFunc);
+
+            const ibFunc = (passEncoder: GPURenderPassEncoder) => {
+                passEncoder.setIndexBuffer(ia.gpuIndexBuffer?.glBuffer as GPUBuffer,
+                    ia.glIndexType, ia.gpuIndexBuffer?.glOffset, ia.gpuIndexBuffer?.size);
+            };
+            this._renderPassFuncQueue.push(ibFunc);
 
             const bcFunc = (passEncoder: GPURenderPassEncoder) => {
                 passEncoder.setBlendColor([this._curBlendConstants[0],
@@ -566,12 +584,6 @@ export class WebGPUCommandBuffer extends CommandBuffer {
                     this._curBlendConstants[3]]);
             };
             this._renderPassFuncQueue.push(bcFunc);
-
-            const ibFunc = (passEncoder: GPURenderPassEncoder) => {
-                passEncoder.setIndexBuffer(ia.gpuIndexBuffer?.glBuffer as GPUBuffer,
-                    ia.glIndexType, ia.gpuIndexBuffer?.glOffset, ia.gpuIndexBuffer?.size);
-            };
-            this._renderPassFuncQueue.push(ibFunc);
 
             this._isStateInvalied = false;
         }
