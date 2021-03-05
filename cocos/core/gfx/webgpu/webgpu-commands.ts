@@ -778,10 +778,15 @@ export function WebGPUCmdFuncDestroyFramebuffer (device: WebGPUDevice, gpuFrameb
     }
 }
 
+// ----------------------- FIXME: a temp solution for seperate sampler/texture, needs to be done in editor-------------------------------------
+// from xxx.chunck
+
+//------------------------------------------------------------------------------------------------------------
+
 function removeCombinedSamplerTexture (shaderSource: string) {
+    // sampler and texture
     const samplerTexturArr = shaderSource.match(/layout\(set = \d+, binding = \d+\) uniform sampler\w* \w+;/g);
     const count = samplerTexturArr?.length ? samplerTexturArr?.length : 0;
-
     let code = shaderSource;
     samplerTexturArr?.every((str) => {
         const textureName = str.match(/(?<=uniform sampler\w* )(\w+)(?=;)/g)!.toString();
@@ -812,7 +817,36 @@ function removeCombinedSamplerTexture (shaderSource: string) {
         //----------------
         return true;
     });
-    code = code.replace(/(?<!vec4 )(CCSampleTexture\(.+\))/g, 'texture(sampler2D(cc_spriteTexture, cc_spriteTextureSampler), uv0)');
+
+    //     const re = /(?<!vec4\s*)(?:fetchVec3ArrayFromTexture\()([\w]+)/g;
+    // let cap = re.exec(str);
+    // while (cap) {
+    //     cap[1];
+    //     cap = re.exec(str);
+    // }
+
+    if (samplerTexturArr && samplerTexturArr?.length > 0) {
+        // function:CCSampleTexture, fetchDesplacement...
+        const funcSourceArray = code.match(/(?<=vec4 ).*?\(sampler2D[^}]+}/g);
+        funcSourceArray?.every((str) => {
+            const funcName = str.match(/^[\w]+[^(]/g)!.toString();
+            const textureName = str.match(/(?<=sampler2D )[\w]+(?=,)/g)!.toString();
+            let funcParamsReplaced = str.replace(/sampler2D [\w]+,/g, `sampler ${textureName}Sampler, texture2D ${textureName},`);
+
+            const regStr = `texture(${textureName}`;
+            while (funcParamsReplaced.indexOf(regStr) !== -1) {
+                funcParamsReplaced = funcParamsReplaced.replace(regStr, `texture(sampler2D(${textureName}, ${textureName}Sampler)`);
+            }
+            code = code.replace(str, funcParamsReplaced);
+            const funcRegStr = new RegExp(`(?<!vec4 )${funcName}[^,]+`);
+            funcRegStr.exec(code)?.every((str) => {
+                code.replace(str, `${funcName}(`);
+            });
+            return true;
+        });
+    }
+
+    // code = code.replace(/(?<!vec4 )(CCSampleTexture\(.+\))/g, 'CCSampleTexture(cc_spriteTextureSampler, cc_spriteTexture, uv0)');
     return code;
 }
 
