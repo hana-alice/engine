@@ -779,8 +779,21 @@ export function WebGPUCmdFuncDestroyFramebuffer (device: WebGPUDevice, gpuFrameb
 }
 
 // ----------------------- FIXME: a temp solution for seperate sampler/texture, needs to be done in editor-------------------------------------
-// from xxx.chunck
+/*
+CCSamplerTexture(sampler2D tex, vec2 uv){
+    ...
+    texture(tex,uv);
+    ...
+}
 
+origin:
+CCSamplerTexture(texSampler, uv);
+to:
+CCSamplerTexture(sampler2D(tex, sampler), uv);
+
+error occurs:
+'call argument' : sampler constructor must appear at point of use
+*/
 //------------------------------------------------------------------------------------------------------------
 
 function removeCombinedSamplerTexture (shaderSource: string) {
@@ -791,7 +804,7 @@ function removeCombinedSamplerTexture (shaderSource: string) {
     samplerTexturArr?.every((str) => {
         const textureName = str.match(/(?<=uniform sampler\w* )(\w+)(?=;)/g)!.toString();
         let samplerStr = str.replace(textureName, `${textureName}Sampler`);
-        const samplerFunc = samplerStr.match(/(?<=uniform )(sampler\w*)/g)?.toString();
+        const samplerFunc = samplerStr.match(/(?<=uniform )(sampler\w*)/g)!.toString();
         samplerStr = samplerStr.replace(/(?<=uniform )(sampler\w*)/g, 'sampler');
 
         const textureReg = /(?<=binding = )(\d+)(?=\))/g;
@@ -802,49 +815,17 @@ function removeCombinedSamplerTexture (shaderSource: string) {
 
         code = code.replace(str, `${samplerStr}\n${textureStr}`);
 
-        const regStr = `texture(${textureName}`;
-        while (code.indexOf(regStr) !== -1) {
-            code = code.replace(regStr, `texture(${samplerFunc!}(${textureName}, ${textureName}Sampler)`);
+        const regStr = `(?<!layout.*?)(?<!${samplerFunc}\\()\\b${textureName}\\b`;
+        const re = new RegExp(regStr);
+        let reArr = re.exec(code);
+        while (reArr) {
+            code = code.replace(re, `${samplerFunc}(${textureName},${textureName}Sampler)`);
+            reArr = re.exec(code);
         }
-
-        //----------------
-        // (?<=\()(sampler2D)(?=\W)
-
-        // (?<!vec4 )(CCSampleTexture\(.+\))
-        // const spmlRegStr = `(?<=\\()(${samplerFunc!})(?=\\s)`;
-        // code = code.replace(spmlRegStr, 'sampler');
-
-        //----------------
         return true;
     });
 
-    //     const re = /(?<!vec4\s*)(?:fetchVec3ArrayFromTexture\()([\w]+)/g;
-    // let cap = re.exec(str);
-    // while (cap) {
-    //     cap[1];
-    //     cap = re.exec(str);
-    // }
-
-    if (samplerTexturArr && samplerTexturArr?.length > 0) {
-        // function:CCSampleTexture, fetchDesplacement...
-        const funcSourceArray = code.match(/(?<=vec4 ).*?\(sampler2D[^}]+}/g);
-        funcSourceArray?.every((str) => {
-            const funcName = str.match(/^[\w]+[^(]/g)!.toString();
-            const textureName = str.match(/(?<=sampler2D )[\w]+(?=,)/g)!.toString();
-            let funcParamsReplaced = str.replace(/sampler2D [\w]+,/g, `sampler ${textureName}Sampler, texture2D ${textureName},`);
-
-            const regStr = `texture(${textureName}`;
-            while (funcParamsReplaced.indexOf(regStr) !== -1) {
-                funcParamsReplaced = funcParamsReplaced.replace(regStr, `texture(sampler2D(${textureName}, ${textureName}Sampler)`);
-            }
-            code = code.replace(str, funcParamsReplaced);
-            const funcRegStr = new RegExp(`(?<!vec4 )${funcName}[^,]+`);
-            funcRegStr.exec(code)?.every((str) => {
-                code.replace(str, `${funcName}(`);
-            });
-            return true;
-        });
-    }
+    // function
 
     // code = code.replace(/(?<!vec4 )(CCSampleTexture\(.+\))/g, 'CCSampleTexture(cc_spriteTextureSampler, cc_spriteTexture, uv0)');
     return code;
@@ -967,13 +948,6 @@ interface IWebGPUStateCache {
     glPrimitive: GPUPrimitiveTopology;
     invalidateAttachments: GLenum[];
 }
-const gfxStateCache: IWebGPUStateCache = {
-    gpuPipelineState: null,
-    gpuInputAssembler: null,
-    reverseCW: false,
-    glPrimitive: 'triangle-list',
-    invalidateAttachments: [],
-};
 
 function maxElementOfImageArray (bufInfoArr: BufferTextureCopy[]): number {
     let maxSize = 0;
