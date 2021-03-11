@@ -154,7 +154,7 @@ export class WebGPUCommandBuffer extends CommandBuffer {
         clearStencil: number,
     ) {
         const gpuDevice = this._device as WebGPUDevice;
-        this._nativePassDesc = (renderPass as WebGPURenderPass).gpuRenderPass.nativeRenderPass!;
+        this._nativePassDesc = (renderPass as WebGPURenderPass).gpuRenderPass.nativeRenderPass;
         const gpuFramebuffer = (framebuffer as WebGPUFramebuffer).gpuFramebuffer;
         const gpuRenderPass = renderPass as WebGPURenderPass;
 
@@ -563,7 +563,6 @@ export class WebGPUCommandBuffer extends CommandBuffer {
             for (let i = 0; i < ia.gpuVertexBuffers.length; i++) {
                 wgpuVertexBuffers[i] = { slot: i, buffer: ia.gpuVertexBuffers[i].glBuffer!, offset: ia.gpuVertexBuffers[i].glOffset };
             }
-
             const vbFunc = (passEncoder: GPURenderPassEncoder) => {
                 for (let i = 0; i < wgpuVertexBuffers.length; i++) {
                     passEncoder.setVertexBuffer(wgpuVertexBuffers[i].slot, wgpuVertexBuffers[i].buffer, wgpuVertexBuffers[i].offset);
@@ -571,9 +570,14 @@ export class WebGPUCommandBuffer extends CommandBuffer {
             };
             this._renderPassFuncQueue.push(vbFunc);
 
+            const wgpuIndexBuffer:{indexType: GPUIndexFormat, buffer: GPUBuffer, offset: number, size: number} = {
+                indexType: ia.glIndexType,
+                buffer: ia.gpuIndexBuffer?.glBuffer as GPUBuffer,
+                offset: ia.gpuIndexBuffer!.glOffset,
+                size: ia.gpuIndexBuffer!.size };
             const ibFunc = (passEncoder: GPURenderPassEncoder) => {
-                passEncoder.setIndexBuffer(ia.gpuIndexBuffer?.glBuffer as GPUBuffer,
-                    ia.glIndexType, ia.gpuIndexBuffer?.glOffset, ia.gpuIndexBuffer?.size);
+                passEncoder.setIndexBuffer(wgpuIndexBuffer.buffer,
+                    wgpuIndexBuffer.indexType, wgpuIndexBuffer.offset, wgpuIndexBuffer.size);
             };
             this._renderPassFuncQueue.push(ibFunc);
 
