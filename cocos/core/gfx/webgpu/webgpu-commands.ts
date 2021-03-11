@@ -678,8 +678,20 @@ export function WebGPUCmdFuncUpdateBuffer (device: WebGPUDevice, gpuBuffer: IWeb
     } else {
         const nativeDevice: GPUDevice = device.nativeDevice()!;
         let buff = buffer as ArrayBuffer;
-        if (buff.byteLength !== size) {
-            buff = buff.slice(0, size);
+        let rawBuffer;
+
+        // arraybuffer size not equal to buff.bytelength, so new another array
+        buff = buff.slice(0, size);
+
+        if ('buffer' in buff) {
+            // es-lint as any
+            rawBuffer = (buff as any).buffer;
+        } else {
+            rawBuffer = buff;
+        }
+
+        if (rawBuffer.byteLength !== size) {
+            rawBuffer = rawBuffer.slice(0, size);
         }
         // gpuBuffer.glbuffer may not able to be mapped directly, so staging buffer here.
         // const stagingBuffer = nativeDevice.createBuffer({
@@ -693,11 +705,12 @@ export function WebGPUCmdFuncUpdateBuffer (device: WebGPUDevice, gpuBuffer: IWeb
         const cache = device.stateCache;
 
         if (buff.byteLength % 4 !== 0) {
-            const newBuff = new ArrayBuffer(Math.ceil(buff.byteLength / 4) * 4);
-            buff = Object.assign(newBuff, buff);
+            const newBuffer = new Uint8Array(Math.ceil(rawBuffer.byteLength / 4) * 4);
+            newBuffer.set(new Uint8Array(rawBuffer), 0);
+            nativeDevice.queue.writeBuffer(gpuBuffer.glBuffer!, 0, newBuffer);
+        } else {
+            nativeDevice.queue.writeBuffer(gpuBuffer.glBuffer!, offset, buff);
         }
-        console.log(buff.byteLength);
-        nativeDevice.queue.writeBuffer(gpuBuffer.glBuffer!, offset, buff);
 
         const encoder = nativeDevice.createCommandEncoder();
         nativeDevice.queue.submit([encoder.finish()]);
@@ -881,13 +894,13 @@ function removeCombinedSamplerTexture (shaderSource: string) {
 
         // 3. fn called
         // getVec3DisplacementFromTexture\(([\S]+),[^\)]+
-        const calledReStr = `${pair[0]}\\(([\\S]+),[^\\)]+`;
+        const calledReStr = `(?<!vec.*?)${pair[0]}\\(([\\S]+),[\\s]*[^\\)]+`;
         const calledRe = new RegExp(calledReStr, 'g');
         let calledArr = calledRe.exec(code);
         while (calledArr) {
             if (!calledArr[0].includes(`${calledArr[1]}, ${calledArr[1]}Sampler`)) {
                 const calledStr = calledArr[0].replace(calledArr[1], `${calledArr[1]}, ${calledArr[1]}Sampler`);
-                code = code.replace(calledRe, calledStr);
+                code = code.replace(calledArr[0], calledStr);
             }
             calledArr = calledRe.exec(code);
         }

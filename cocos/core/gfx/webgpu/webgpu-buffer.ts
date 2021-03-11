@@ -100,15 +100,15 @@ export class WebGPUBuffer extends Buffer {
         const oldSize = this._size;
         if (oldSize === size) { return; }
 
-        this._size = size;
+        this._size = Math.ceil(size / 4) * 4;
         this._count = this._size / this._stride;
 
         if (this._gpuBuffer) {
-            this._gpuBuffer.size = size;
-            if (size > 0) {
+            this._gpuBuffer.size = this._size;
+            if (this._size > 0) {
                 WebGPUCmdFuncResizeBuffer(this._device as WebGPUDevice, this._gpuBuffer);
                 this._device.memoryStatus.bufferSize -= oldSize;
-                this._device.memoryStatus.bufferSize += size;
+                this._device.memoryStatus.bufferSize += this._size;
             }
         }
     }
