@@ -35,6 +35,12 @@ import { Sampler } from './sampler';
 import { Texture } from './texture';
 import { Obj, ObjectType, DescriptorSetInfo, DESCRIPTOR_BUFFER_TYPE, DESCRIPTOR_SAMPLER_TYPE } from './define';
 
+export interface DescriptorSetResource {
+    buffer: Buffer,
+    texture: Texture,
+    sampler: Sampler
+}
+
 /**
  * @en GFX descriptor sets.
  * @zh GFX 描述符集组。

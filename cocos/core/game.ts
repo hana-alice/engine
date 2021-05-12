@@ -293,11 +293,11 @@ export class Game extends EventTarget {
      * @en Indicates whether the engine and the renderer has been initialized
      * @zh 引擎和渲染器是否以完成初始化
      */
-    public get inited () {
+    public get inited() {
         return this._inited;
     }
 
-    public get frameTime () {
+    public get frameTime() {
         return this._frameTime;
     }
 
@@ -329,7 +329,7 @@ export class Game extends EventTarget {
      * @en Set frame rate of game.
      * @zh 设置游戏帧率。
      */
-    public setFrameRate (frameRate: number | string) {
+    public setFrameRate(frameRate: number | string) {
         const config = this.config;
         if (typeof frameRate !== 'number') {
             frameRate = parseInt(frameRate, 10);
@@ -348,7 +348,7 @@ export class Game extends EventTarget {
      * @zh 获取设置的游戏帧率（不等同于实际帧率）。
      * @return frame rate
      */
-    public getFrameRate (): number {
+    public getFrameRate(): number {
         return this.config.frameRate || 0;
     }
 
@@ -356,7 +356,7 @@ export class Game extends EventTarget {
      * @en Run the game frame by frame.
      * @zh 执行一帧游戏循环。
      */
-    public step () {
+    public step() {
         legacyCC.director.mainLoop();
     }
 
@@ -366,7 +366,7 @@ export class Game extends EventTarget {
      * This is different with `director.pause` which only pause the game logic execution.<br>
      * @zh 暂停游戏主循环。包含：游戏逻辑，渲染，事件处理，背景音乐和所有音效。这点和只暂停游戏逻辑的 `director.pause` 不同。
      */
-    public pause () {
+    public pause() {
         if (this._paused) { return; }
         this._paused = true;
         // Pause main loop
@@ -381,7 +381,7 @@ export class Game extends EventTarget {
      * game logic execution, rendering process, event manager, background music and all audio effects.<br>
      * @zh 恢复游戏主循环。包含：游戏逻辑，渲染，事件处理，背景音乐和所有音效。
      */
-    public resume () {
+    public resume() {
         if (!this._paused) { return; }
         // Resume main loop
         this._runMainLoop();
@@ -391,7 +391,7 @@ export class Game extends EventTarget {
      * @en Check whether the game is paused.
      * @zh 判断游戏是否暂停。
      */
-    public isPaused (): boolean {
+    public isPaused(): boolean {
         return this._paused;
     }
 
@@ -399,7 +399,7 @@ export class Game extends EventTarget {
      * @en Restart game.
      * @zh 重新开始游戏
      */
-    public restart (): Promise<void> {
+    public restart(): Promise<void> {
         const afterDrawPromise = new Promise<void>((resolve) => legacyCC.director.once(legacyCC.Director.EVENT_AFTER_DRAW, () => resolve()) as void);
         return afterDrawPromise.then(() => {
             for (const id in this._persistRootNodes) {
@@ -423,7 +423,7 @@ export class Game extends EventTarget {
      * @en End game, it will close the game window
      * @zh 退出游戏
      */
-    public end () {
+    public end() {
         if (this._gfxDevice) {
             this._gfxDevice.destroy();
             this._gfxDevice = null;
@@ -445,7 +445,7 @@ export class Game extends EventTarget {
      * @param once - After the first invocation, whether the callback should be unregistered.
      * @return - Just returns the incoming callback so you can save the anonymous function easier.
      */
-    public on (type: string, callback: () => void, target?: any, once?: boolean): any {
+    public on(type: string, callback: () => void, target?: any, once?: boolean): any {
         // Make sure EVENT_ENGINE_INITED callbacks to be invoked
         if (this._engineInited && type === Game.EVENT_ENGINE_INITED) {
             return callback.call(target);
@@ -465,7 +465,7 @@ export class Game extends EventTarget {
      *                              The callback is ignored if it is a duplicate (the callbacks are unique).
      * @param target - The target (this object) to invoke the callback, can be null
      */
-    public once (type: string, callback: () => void, target?: any): any {
+    public once(type: string, callback: () => void, target?: any): any {
         // Make sure EVENT_ENGINE_INITED callbacks to be invoked
         if (this._engineInited && type === Game.EVENT_ENGINE_INITED) {
             return callback.call(target);
@@ -478,7 +478,7 @@ export class Game extends EventTarget {
      * @zh 使用指定的配置初始化引擎。
      * @param config - Pass configuration object
      */
-    public init (config: IGameConfig) {
+    public init(config: IGameConfig) {
         this._initConfig(config);
         // Init assetManager
         if (this.config.assetOptions) {
@@ -502,9 +502,9 @@ export class Game extends EventTarget {
      * @zh 运行游戏，并且指定引擎配置和 onStart 的回调。
      * @param onStart - function to be executed after game initialized
      */
-    public run (onStart?: Game.OnStart): Promise<void>;
+    public run(onStart?: Game.OnStart): Promise<void>;
 
-    public run (configOrCallback?: Game.OnStart | IGameConfig, onStart?: Game.OnStart) {
+    public run(configOrCallback?: Game.OnStart | IGameConfig, onStart?: Game.OnStart) {
         // To compatible with older version,
         // we allow the `run(config, onstart?)` form. But it's deprecated.
         let initPromise: Promise<boolean> | undefined;
@@ -535,7 +535,7 @@ export class Game extends EventTarget {
      * 目标节点必须位于为层级的根节点，否则无效。
      * @param node - The node to be made persistent
      */
-    public addPersistRootNode (node: Node) {
+    public addPersistRootNode(node: Node) {
         if (!legacyCC.Node.isNode(node) || !node.uuid) {
             debug.warnID(3800);
             return;
@@ -567,7 +567,7 @@ export class Game extends EventTarget {
      * @zh 取消常驻根节点。
      * @param node - The node to be removed from persistent node list
      */
-    public removePersistRootNode (node: Node) {
+    public removePersistRootNode(node: Node) {
         const id = node.uuid || '';
         if (node === this._persistRootNodes[id]) {
             delete this._persistRootNodes[id];
@@ -582,15 +582,14 @@ export class Game extends EventTarget {
      * @zh 检查节点是否是常驻根节点。
      * @param node - The node to be checked
      */
-    public isPersistRootNode (node: { _persistNode: any; }): boolean {
+    public isPersistRootNode(node: { _persistNode: any; }): boolean {
         return !!node._persistNode;
     }
 
     //  @Engine loading
 
-    private _initEngine () {
-        this._initDevice();
-        return Promise.resolve(legacyCC.director._init()).then(() => {
+    private _initEngine() {
+        return Promise.resolve(this._initDeviceAsync()).then(() => {
             // Log engine version
             debug.log(`Cocos Creator v${VERSION}`);
             this.emit(Game.EVENT_ENGINE_INITED);
@@ -599,10 +598,16 @@ export class Game extends EventTarget {
         });
     }
 
+    private _initDeviceAsync() {
+        return Promise.resolve(this._initDevice()).then(() => {
+            legacyCC.director._init();
+        });
+    }
+
     // @Methods
 
     //  @Time ticker section
-    private _setAnimFrame () {
+    private _setAnimFrame() {
         this._lastTime = performance.now();
         const frameRate = this.config.frameRate;
         this._frameTime = 1000 / frameRate;
@@ -618,10 +623,10 @@ export class Game extends EventTarget {
             }
 
             const rAF = window.requestAnimationFrame = window.requestAnimationFrame
-                     || window.webkitRequestAnimationFrame
-                     || window.mozRequestAnimationFrame
-                     || window.oRequestAnimationFrame
-                     || window.msRequestAnimationFrame;
+                || window.webkitRequestAnimationFrame
+                || window.mozRequestAnimationFrame
+                || window.oRequestAnimationFrame
+                || window.msRequestAnimationFrame;
             if (frameRate !== 60 && frameRate !== 30) {
                 // @ts-expect-error Compatibility
                 window.rAF = rAF ? this._stTimeWithRAF : this._stTime;
@@ -643,7 +648,7 @@ export class Game extends EventTarget {
         }
     }
 
-    private _stTimeWithRAF (callback) {
+    private _stTimeWithRAF(callback) {
         const currTime = performance.now();
         const elapseTime = Math.max(0, (currTime - game._lastTime));
         const timeToCall = Math.max(0, game._frameTime - elapseTime);
@@ -654,7 +659,7 @@ export class Game extends EventTarget {
         return id;
     }
 
-    private _stTime (callback: () => void) {
+    private _stTime(callback: () => void) {
         const currTime = performance.now();
         const elapseTime = Math.max(0, (currTime - game._lastTime));
         const timeToCall = Math.max(0, game._frameTime - elapseTime);
@@ -662,11 +667,11 @@ export class Game extends EventTarget {
         game._lastTime = currTime + timeToCall;
         return id;
     }
-    private _ctTime (id: number | undefined) {
+    private _ctTime(id: number | undefined) {
         window.clearTimeout(id);
     }
     // Run game.
-    private _runMainLoop () {
+    private _runMainLoop() {
         if (!this._inited || (EDITOR && !legacyCC.GAME_VIEW)) {
             return;
         }
@@ -706,7 +711,7 @@ export class Game extends EventTarget {
     }
 
     // @Game loading section
-    private _initConfig (config: IGameConfig) {
+    private _initConfig(config: IGameConfig) {
         // Configs adjustment
         if (typeof config.debugMode !== 'number') {
             config.debugMode = debug.DebugMode.NONE;
@@ -736,7 +741,7 @@ export class Game extends EventTarget {
         this._setAnimFrame();
     }
 
-    private _determineRenderType () {
+    private _determineRenderType() {
         const config = this.config;
         const userRenderMode = parseInt(config.renderMode as any, 10);
 
@@ -765,7 +770,7 @@ export class Game extends EventTarget {
         }
     }
 
-    private _initDevice () {
+    private _initDevice() {
         // Avoid setup to be called twice.
         if (this._rendererInitialized) { return; }
 
@@ -774,7 +779,10 @@ export class Game extends EventTarget {
         this.container = (this.config as any).adapter.container;
 
         this._determineRenderType();
+        return this._constructDevice();
+    }
 
+    private async _constructDevice() {
         // WebGL context created successfully
         if (this.renderType === Game.RENDER_TYPE_WEBGL) {
             const ctors: Constructor<Device>[] = [];
@@ -790,10 +798,13 @@ export class Game extends EventTarget {
                     useWebGL2 = false;
                 }
                 if (useWebGL2 && legacyCC.WebGL2Device) {
-                    ctors.push(legacyCC.WebGL2Device);
+                    // ctors.push(legacyCC.WebGL2Device);
                 }
                 if (legacyCC.WebGLDevice) {
-                    ctors.push(legacyCC.WebGLDevice);
+                    // ctors.push(legacyCC.WebGLDevice);
+                }
+                if (legacyCC.WebGPUDevice) {
+                    ctors.push(legacyCC.WebGPUDevice);
                 }
 
                 const opts = new DeviceInfo(
@@ -807,7 +818,10 @@ export class Game extends EventTarget {
                 );
                 for (let i = 0; i < ctors.length; i++) {
                     this._gfxDevice = new ctors[i]();
-                    if (this._gfxDevice.initialize(opts)) { break; }
+                    let success = await this._gfxDevice.initialize(opts);
+                    if (success) {
+                        break;
+                    }
                 }
             }
         }
@@ -816,28 +830,25 @@ export class Game extends EventTarget {
             // todo fix here for wechat game
             debug.error('can not support canvas rendering in 3D');
             this.renderType = Game.RENDER_TYPE_CANVAS;
-            return;
         }
-
-        this.canvas!.oncontextmenu = () => false;
     }
 
-    private _initEvents () {
+    private _initEvents() {
         system.onShow(this._onShow.bind(this));
         system.onHide(this._onHide.bind(this));
     }
 
-    private _onHide () {
+    private _onHide() {
         this.emit(Game.EVENT_HIDE);
         this.pause();
     }
 
-    private _onShow () {
+    private _onShow() {
         this.emit(Game.EVENT_SHOW);
         this.resume();
     }
 
-    private _setRenderPipelineNShowSplash () {
+    private _setRenderPipelineNShowSplash() {
         return Promise.resolve(this._setupRenderPipeline()).then(
             () => Promise.resolve(this._showSplashScreen()).then(
                 () => {
@@ -853,7 +864,7 @@ export class Game extends EventTarget {
         );
     }
 
-    private _setupRenderPipeline () {
+    private _setupRenderPipeline() {
         const { renderPipeline } = this.config;
         if (!renderPipeline) {
             return this._setRenderPipeline();
@@ -871,7 +882,7 @@ export class Game extends EventTarget {
         });
     }
 
-    private _showSplashScreen () {
+    private _showSplashScreen() {
         if (!EDITOR && !PREVIEW && legacyCC.internal.SplashScreen) {
             const splashScreen = legacyCC.internal.SplashScreen.instance as SplashScreen;
             splashScreen.main(legacyCC.director.root);
@@ -883,7 +894,7 @@ export class Game extends EventTarget {
         return null;
     }
 
-    private _setRenderPipeline (rppl?: RenderPipeline) {
+    private _setRenderPipeline(rppl?: RenderPipeline) {
         if (!legacyCC.director.root.setRenderPipeline(rppl)) {
             this._setRenderPipeline();
         }
@@ -892,7 +903,7 @@ export class Game extends EventTarget {
         this._safeEmit(Game.EVENT_RENDERER_INITED);
     }
 
-    private _safeEmit (event) {
+    private _safeEmit(event) {
         if (EDITOR) {
             try {
                 this.emit(event);

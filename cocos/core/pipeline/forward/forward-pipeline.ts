@@ -34,8 +34,10 @@ import { ForwardFlow } from './forward-flow';
 import { RenderTextureConfig, MaterialConfig } from '../pipeline-serialization';
 import { ShadowFlow } from '../shadow/shadow-flow';
 import { UBOGlobal, UBOShadow, UBOCamera, UNIFORM_SHADOWMAP_BINDING, UNIFORM_SPOT_LIGHTING_MAP_TEXTURE_BINDING } from '../define';
-import { ColorAttachment, DepthStencilAttachment, RenderPass, LoadOp,
-    RenderPassInfo, Feature, ClearFlagBit, ClearFlags, Filter, Address, StoreOp, AccessType } from '../../gfx';
+import {
+    ColorAttachment, DepthStencilAttachment, RenderPass, LoadOp,
+    RenderPassInfo, Feature, ClearFlagBit, ClearFlags, Filter, Address, StoreOp, AccessType
+} from '../../gfx';
 import { SKYBOX_FLAG } from '../../renderer/scene/camera';
 import { genSamplerHash, samplerLib } from '../../renderer/core/sampler-lib';
 import { builtinResMgr } from '../../builtin';
@@ -70,7 +72,7 @@ export class ForwardPipeline extends RenderPipeline {
     protected materials: MaterialConfig[] = [];
     protected _renderPasses = new Map<ClearFlags, RenderPass>();
 
-    public initialize (info: IRenderPipelineInfo): boolean {
+    public initialize(info: IRenderPipelineInfo): boolean {
         super.initialize(info);
 
         if (this._flows.length === 0) {
@@ -86,7 +88,7 @@ export class ForwardPipeline extends RenderPipeline {
         return true;
     }
 
-    public activate (): boolean {
+    public activate(): boolean {
         if (!super.activate()) {
             return false;
         }
@@ -99,7 +101,7 @@ export class ForwardPipeline extends RenderPipeline {
         return true;
     }
 
-    public render (cameras: Camera[]) {
+    public render(cameras: Camera[]) {
         this._commandBuffers[0].begin();
         this._pipelineUBO.updateGlobalUBO();
         for (let i = 0; i < cameras.length; i++) {
@@ -117,7 +119,7 @@ export class ForwardPipeline extends RenderPipeline {
         this._device.queue.submit(this._commandBuffers);
     }
 
-    public getRenderPass (clearFlags: ClearFlags): RenderPass {
+    public getRenderPass(clearFlags: ClearFlags): RenderPass {
         let renderPass = this._renderPasses.get(clearFlags);
         if (renderPass) { return renderPass; }
 
@@ -151,7 +153,7 @@ export class ForwardPipeline extends RenderPipeline {
         return renderPass;
     }
 
-    private _activeRenderer () {
+    private _activeRenderer() {
         const device = this.device;
 
         this._commandBuffers.push(device.commandBuffer);
@@ -167,7 +169,7 @@ export class ForwardPipeline extends RenderPipeline {
         return true;
     }
 
-    private destroyUBOs () {
+    private destroyUBOs() {
         if (this._descriptorSet) {
             this._descriptorSet.getBuffer(UBOGlobal.BINDING).destroy();
             this._descriptorSet.getBuffer(UBOShadow.BINDING).destroy();
@@ -179,7 +181,7 @@ export class ForwardPipeline extends RenderPipeline {
         }
     }
 
-    public destroy () {
+    public destroy() {
         this.destroyUBOs();
 
         const rpIter = this._renderPasses.values();

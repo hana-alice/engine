@@ -242,7 +242,7 @@ export abstract class Device {
     protected _memoryStatus = new MemoryStatus();
     protected _caps = new DeviceCaps();
 
-    public abstract initialize (info: DeviceInfo): boolean;
+    public abstract initialize (info: DeviceInfo): boolean | Promise<boolean>;
 
     public abstract destroy (): void;
 
