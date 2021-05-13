@@ -5,11 +5,11 @@ import { WebGPUDevice } from './webgpu-device';
 import { PipelineLayoutInfo } from '../base/define';
 
 export class WebGPUPipelineLayout extends PipelineLayout {
-    get gpuPipelineLayout() { return this._gpuPipelineLayout!; }
+    get gpuPipelineLayout () { return this._gpuPipelineLayout!; }
 
     private _gpuPipelineLayout: IWebGPUGPUPipelineLayout | null = null;
 
-    public initialize(info: PipelineLayoutInfo) {
+    public initialize (info: PipelineLayoutInfo) {
         Array.prototype.push.apply(this._setLayouts, info.setLayouts);
 
         const dynamicOffsetIndices: number[][] = [];
@@ -48,7 +48,7 @@ export class WebGPUPipelineLayout extends PipelineLayout {
         return true;
     }
 
-    public destroy() {
+    public destroy () {
         this._setLayouts.length = 0;
     }
 }

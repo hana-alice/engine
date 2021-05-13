@@ -24,8 +24,9 @@ import {
     ShaderStageFlags,
     DescriptorType,
     TextureInfo,
+    Color, Rect, Viewport, BufferTextureCopy,
 } from '../base/define';
-import { Color, Rect, Viewport, BufferTextureCopy } from '../base/define';
+
 import { WebGLEXT } from '../webgl/webgl-define';
 import { WebGPUCommandAllocator } from './webgpu-command-allocator';
 import {
@@ -73,12 +74,12 @@ const _f32v4 = new Float32Array(4);
 
 // tslint:disable: max-line-length
 
-function CmpF32NotEuqal(a: number, b: number): boolean {
+function CmpF32NotEuqal (a: number, b: number): boolean {
     const c = a - b;
     return (c > 0.000001 || c < -0.000001);
 }
 
-export function GLStageToWebGPUStage(stage: ShaderStageFlags) {
+export function GLStageToWebGPUStage (stage: ShaderStageFlags) {
     let flag = 0x0;
     if (stage & ShaderStageFlagBit.VERTEX) { flag |= GPUShaderStage.VERTEX; }
     if (stage & ShaderStageFlagBit.FRAGMENT) { flag |= GPUShaderStage.FRAGMENT; }
@@ -88,7 +89,7 @@ export function GLStageToWebGPUStage(stage: ShaderStageFlags) {
     return flag;
 }
 
-export function GLDescTypeToWebGPUDescType(descType: DescriptorType) {
+export function GLDescTypeToWebGPUDescType (descType: DescriptorType) {
     switch (descType) {
         case DescriptorType.UNIFORM_BUFFER:
         case DescriptorType.DYNAMIC_UNIFORM_BUFFER:
@@ -98,13 +99,13 @@ export function GLDescTypeToWebGPUDescType(descType: DescriptorType) {
         case DescriptorType.SAMPLER:
             return 'sampler';
         case DescriptorType.SAMPLER_TEXTURE:
-            return 'sampled-texture'
+            return 'sampled-texture';
         default:
             console.error('binding type not support by webGPU!');
     }
 }
 
-export function GFXFormatToWGPUVertexFormat(format: Format): GPUVertexFormat {
+export function GFXFormatToWGPUVertexFormat (format: Format): GPUVertexFormat {
     switch (format) {
         case Format.R32F: return 'float';
         case Format.R32UI: return 'uint';
@@ -145,7 +146,7 @@ export function GFXFormatToWGPUVertexFormat(format: Format): GPUVertexFormat {
     }
 }
 
-export function GFXFormatToWGPUTextureFormat(format: Format): GPUTextureFormat {
+export function GFXFormatToWGPUTextureFormat (format: Format): GPUTextureFormat {
     switch (format) {
         case Format.R8: return 'r8unorm';
         case Format.R8SN: return 'r8snorm';
@@ -204,11 +205,11 @@ export function GFXFormatToWGPUTextureFormat(format: Format): GPUTextureFormat {
     }
 }
 
-export function GFXFormatToWGPUFormat(format: Format): GPUTextureFormat {
+export function GFXFormatToWGPUFormat (format: Format): GPUTextureFormat {
     return GFXFormatToWGPUTextureFormat(format);
 }
 
-export function GFXTextureToWebGPUTexture(textureType: TextureType): GPUTextureViewDimension {
+export function GFXTextureToWebGPUTexture (textureType: TextureType): GPUTextureViewDimension {
     switch (textureType) {
         case TextureType.TEX1D: return '1d';
         case TextureType.TEX2D: return '2d';
@@ -222,7 +223,7 @@ export function GFXTextureToWebGPUTexture(textureType: TextureType): GPUTextureV
     }
 }
 
-export function GFXTextureUsageToNative(usage: TextureUsageBit): GPUTextureUsageFlags {
+export function GFXTextureUsageToNative (usage: TextureUsageBit): GPUTextureUsageFlags {
     let nativeUsage: GPUTextureUsageFlags = 0;
     if (usage & TextureUsageBit.TRANSFER_SRC) {
         nativeUsage |= GPUTextureUsage.COPY_SRC;
@@ -256,7 +257,7 @@ export function GFXTextureUsageToNative(usage: TextureUsageBit): GPUTextureUsage
     return nativeUsage;
 }
 
-function GFXTypeToWGPUType(type: Type, gl: WebGL2RenderingContext): GLenum {
+function GFXTypeToWGPUType (type: Type, gl: WebGL2RenderingContext): GLenum {
     switch (type) {
         case Type.BOOL: return gl.BOOL;
         case Type.BOOL2: return gl.BOOL_VEC2;
@@ -291,7 +292,7 @@ function GFXTypeToWGPUType(type: Type, gl: WebGL2RenderingContext): GLenum {
     }
 }
 
-function WebGLTypeToGFXType(glType: GLenum, gl: WebGL2RenderingContext): Type {
+function WebGLTypeToGFXType (glType: GLenum, gl: WebGL2RenderingContext): Type {
     switch (glType) {
         case gl.BOOL: return Type.BOOL;
         case gl.BOOL_VEC2: return Type.BOOL2;
@@ -329,7 +330,7 @@ function WebGLTypeToGFXType(glType: GLenum, gl: WebGL2RenderingContext): Type {
     }
 }
 
-function WebGLGetTypeSize(glType: GLenum, gl: WebGL2RenderingContext): Type {
+function WebGLGetTypeSize (glType: GLenum, gl: WebGL2RenderingContext): Type {
     switch (glType) {
         case gl.BOOL: return 4;
         case gl.BOOL_VEC2: return 8;
@@ -376,7 +377,7 @@ function WebGLGetTypeSize(glType: GLenum, gl: WebGL2RenderingContext): Type {
     }
 }
 
-function WebGLGetComponentCount(glType: GLenum, gl: WebGL2RenderingContext): Type {
+function WebGLGetComponentCount (glType: GLenum, gl: WebGL2RenderingContext): Type {
     switch (glType) {
         case gl.FLOAT_MAT2: return 2;
         case gl.FLOAT_MAT2x3: return 2;
@@ -442,7 +443,7 @@ export const WebGPUBlendOps: GPUBlendOperation[] = [
     'max',
 ];
 
-export function WebGPUBlendMask(mask: ColorMask): GPUColorWriteFlags {
+export function WebGPUBlendMask (mask: ColorMask): GPUColorWriteFlags {
     switch (mask) {
         case ColorMask.R:
             return GPUColorWrite.RED;
@@ -489,11 +490,11 @@ export abstract class WebGPUCmdObject {
     public cmdType: WebGPUCmd;
     public refCount = 0;
 
-    constructor(type: WebGPUCmd) {
+    constructor (type: WebGPUCmd) {
         this.cmdType = type;
     }
 
-    public abstract clear();
+    public abstract clear ();
 }
 
 export class WebGPUCmdBeginRenderPass extends WebGPUCmdObject {
@@ -504,11 +505,11 @@ export class WebGPUCmdBeginRenderPass extends WebGPUCmdObject {
     public clearDepth = 1.0;
     public clearStencil = 0;
 
-    constructor() {
+    constructor () {
         super(WebGPUCmd.BEGIN_RENDER_PASS);
     }
 
-    public clear() {
+    public clear () {
         this.gpuFramebuffer = null;
         this.clearColors.length = 0;
     }
@@ -528,11 +529,11 @@ export class WebGPUCmdBindStates extends WebGPUCmdObject {
     public stencilWriteMask: IWebGPUStencilWriteMask | null = null;
     public stencilCompareMask: IWebGPUStencilCompareMask | null = null;
 
-    constructor() {
+    constructor () {
         super(WebGPUCmd.BIND_STATES);
     }
 
-    public clear() {
+    public clear () {
         this.gpuPipelineState = null;
         this.gpuInputAssembler = null;
         this.gpuDescriptorSets.length = 0;
@@ -551,11 +552,11 @@ export class WebGPUCmdBindStates extends WebGPUCmdObject {
 export class WebGPUCmdDraw extends WebGPUCmdObject {
     public drawInfo = new DrawInfo();
 
-    constructor() {
+    constructor () {
         super(WebGPUCmd.DRAW);
     }
 
-    public clear() {
+    public clear () {
     }
 }
 
@@ -565,11 +566,11 @@ export class WebGPUCmdUpdateBuffer extends WebGPUCmdObject {
     public offset = 0;
     public size = 0;
 
-    constructor() {
+    constructor () {
         super(WebGPUCmd.UPDATE_BUFFER);
     }
 
-    public clear() {
+    public clear () {
         this.gpuBuffer = null;
         this.buffer = null;
     }
@@ -580,11 +581,11 @@ export class WebGPUCmdCopyBufferToTexture extends WebGPUCmdObject {
     public buffers: ArrayBufferView[] = [];
     public regions: BufferTextureCopy[] = [];
 
-    constructor() {
+    constructor () {
         super(WebGPUCmd.COPY_BUFFER_TO_TEXTURE);
     }
 
-    public clear() {
+    public clear () {
         this.gpuTexture = null;
         this.buffers.length = 0;
         this.regions.length = 0;
@@ -599,7 +600,7 @@ export class WebGPUCmdPackage {
     public updateBufferCmds: CachedArray<WebGPUCmdUpdateBuffer> = new CachedArray(1);
     public copyBufferToTextureCmds: CachedArray<WebGPUCmdCopyBufferToTexture> = new CachedArray(1);
 
-    public clearCmds(allocator: WebGPUCommandAllocator) {
+    public clearCmds (allocator: WebGPUCommandAllocator) {
         if (this.beginRenderPassCmds.length) {
             allocator.beginRenderPassCmdPool.freeCmds(this.beginRenderPassCmds);
             this.beginRenderPassCmds.clear();
@@ -629,7 +630,7 @@ export class WebGPUCmdPackage {
     }
 }
 
-export function WebGPUCmdFuncCreateBuffer(device: WebGPUDevice, gpuBuffer: IWebGPUGPUBuffer) {
+export function WebGPUCmdFuncCreateBuffer (device: WebGPUDevice, gpuBuffer: IWebGPUGPUBuffer) {
     const nativeDevice: GPUDevice = device.nativeDevice()!;
 
     const bufferDesc = {} as GPUBufferDescriptor;
@@ -658,18 +659,18 @@ export function WebGPUCmdFuncCreateBuffer(device: WebGPUDevice, gpuBuffer: IWebG
     gpuBuffer.glBuffer = nativeDevice.createBuffer(bufferDesc);
 }
 
-export function WebGPUCmdFuncDestroyBuffer(device: WebGPUDevice, gpuBuffer: IWebGPUGPUBuffer) {
+export function WebGPUCmdFuncDestroyBuffer (device: WebGPUDevice, gpuBuffer: IWebGPUGPUBuffer) {
     if (gpuBuffer.glBuffer) {
         gpuBuffer.glBuffer.destroy();
     }
 }
 
-export function WebGPUCmdFuncResizeBuffer(device: WebGPUDevice, gpuBuffer: IWebGPUGPUBuffer) {
+export function WebGPUCmdFuncResizeBuffer (device: WebGPUDevice, gpuBuffer: IWebGPUGPUBuffer) {
     WebGPUCmdFuncDestroyBuffer(device, gpuBuffer);
     WebGPUCmdFuncCreateBuffer(device, gpuBuffer);
 }
 
-export function WebGPUCmdFuncUpdateBuffer(device: WebGPUDevice, gpuBuffer: IWebGPUGPUBuffer, buffer: BufferSource, offset: number, size: number) {
+export function WebGPUCmdFuncUpdateBuffer (device: WebGPUDevice, gpuBuffer: IWebGPUGPUBuffer, buffer: BufferSource, offset: number, size: number) {
     if (gpuBuffer.usage & BufferUsageBit.INDIRECT) {
         gpuBuffer.indirects.length = offset;
         Array.prototype.push.apply(gpuBuffer.indirects, (buffer as IndirectBuffer).drawInfos);
@@ -721,7 +722,7 @@ export function WebGPUCmdFuncUpdateBuffer(device: WebGPUDevice, gpuBuffer: IWebG
     }
 }
 
-export function WebGPUCmdFuncCreateTexture(device: WebGPUDevice, gpuTexture: IWebGPUGPUTexture) {
+export function WebGPUCmdFuncCreateTexture (device: WebGPUDevice, gpuTexture: IWebGPUGPUTexture) {
     // dimension optional
     // let dim: GPUTextureViewDimension = GFXTextureToWebGPUTexture(gpuTexture.type);
 
@@ -746,20 +747,20 @@ export function WebGPUCmdFuncCreateTexture(device: WebGPUDevice, gpuTexture: IWe
     gpuTexture.glTexture = device.nativeDevice()!.createTexture(texDescriptor);
 }
 
-export function WebGPUCmdFuncDestroyTexture(gpuTexture: IWebGPUGPUTexture) {
+export function WebGPUCmdFuncDestroyTexture (gpuTexture: IWebGPUGPUTexture) {
     if (gpuTexture.glTexture) {
         gpuTexture.glTexture.destroy();
     }
 }
 
-export function WebGPUCmdFuncResizeTexture(device: WebGPUDevice, gpuTexture: IWebGPUGPUTexture) {
+export function WebGPUCmdFuncResizeTexture (device: WebGPUDevice, gpuTexture: IWebGPUGPUTexture) {
     if (gpuTexture.glTexture) {
         WebGPUCmdFuncDestroyTexture(gpuTexture);
     }
     WebGPUCmdFuncCreateTexture(device, gpuTexture);
 }
 
-export function WebGPUCmdFuncCreateSampler(device: WebGPUDevice, gpuSampler: IWebGPUGPUSampler) {
+export function WebGPUCmdFuncCreateSampler (device: WebGPUDevice, gpuSampler: IWebGPUGPUSampler) {
     const nativeDevice: GPUDevice = device.nativeDevice()!;
 
     gpuSampler.glMinFilter = (gpuSampler.minFilter === Filter.LINEAR || gpuSampler.minFilter === Filter.ANISOTROPIC) ? 'linear' : 'nearest';
@@ -776,21 +777,21 @@ export function WebGPUCmdFuncCreateSampler(device: WebGPUDevice, gpuSampler: IWe
     samplerDesc.minFilter = gpuSampler.glMinFilter;
     samplerDesc.magFilter = gpuSampler.glMagFilter;
     samplerDesc.mipmapFilter = gpuSampler.glMipFilter;
-    samplerDesc.lodMinClamp = 0;//gpuSampler.minLOD;
-    samplerDesc.lodMaxClamp = 1000;//gpuSampler.maxLOD;
+    samplerDesc.lodMinClamp = 0;// gpuSampler.minLOD;
+    samplerDesc.lodMaxClamp = 1000;// gpuSampler.maxLOD;
 
     const sampler: GPUSampler = nativeDevice.createSampler(samplerDesc);
     gpuSampler.glSampler = sampler;
 }
 
-export function WebGPUCmdFuncDestroySampler(device: WebGPUDevice, gpuSampler: IWebGPUGPUSampler) {
+export function WebGPUCmdFuncDestroySampler (device: WebGPUDevice, gpuSampler: IWebGPUGPUSampler) {
     if (gpuSampler.glSampler) {
         device.gl.deleteSampler(gpuSampler.glSampler);
         gpuSampler.glSampler = null;
     }
 }
 
-export function WebGPUCmdFuncDestroyFramebuffer(device: WebGPUDevice, gpuFramebuffer: IWebGPUGPUFramebuffer) {
+export function WebGPUCmdFuncDestroyFramebuffer (device: WebGPUDevice, gpuFramebuffer: IWebGPUGPUFramebuffer) {
     if (gpuFramebuffer.glFramebuffer) {
         device.gl.deleteFramebuffer(gpuFramebuffer.glFramebuffer);
         gpuFramebuffer.glFramebuffer = null;
@@ -815,7 +816,7 @@ error occurs:
 */
 //------------------------------------------------------------------------------------------------------------
 
-function removeCombinedSamplerTexture(shaderSource: string) {
+function removeCombinedSamplerTexture (shaderSource: string) {
     // sampler and texture
     const samplerTexturArr = shaderSource.match(/(.*?)\(set = \d+, binding = \d+\) uniform(.*?)sampler\w* \w+;/g);
     const count = samplerTexturArr?.length ? samplerTexturArr?.length : 0;
@@ -834,11 +835,12 @@ function removeCombinedSamplerTexture(shaderSource: string) {
         // to:
         // layout (set = a, binding = b) uniform sampler cctexSampler;
         // layout (set = a, binding = b + maxTextureNum) uniform texture2D cctex;
-        const textureReg = /(?<=binding = )(\d+)(?=\))/g;
-        const textureBindingStr = str.match(textureReg)!.toString();
-        const textureBinding = Number(textureBindingStr) + 16;
-        let textureStr = str.replace(textureReg, textureBinding.toString());
-        textureStr = textureStr.replace(/(?<=uniform(.*?))(sampler)(?=\w*)/g, 'texture');
+        const samplerReg = /(?<=binding = )(\d+)(?=\))/g;
+        const samplerBindingStr = str.match(samplerReg)!.toString();
+        const samplerBinding = Number(samplerBindingStr) + 16;
+        samplerStr = samplerStr.replace(samplerReg, samplerBinding.toString());
+
+        const textureStr = str.replace(/(?<=uniform(.*?))(sampler)(?=\w*)/g, 'texture');
         code = code.replace(str, `${samplerStr}\n${textureStr}`);
 
         if (!samplerTypeSet.has(samplerFunc)) {
@@ -908,7 +910,7 @@ function removeCombinedSamplerTexture(shaderSource: string) {
 }
 
 type ShaderStage = 'vertex' | 'fragment' | 'compute';
-export function WebGPUCmdFuncCreateShader(device: WebGPUDevice, gpuShader: IWebGPUGPUShader) {
+export function WebGPUCmdFuncCreateShader (device: WebGPUDevice, gpuShader: IWebGPUGPUShader) {
     const nativeDevice = device.nativeDevice()!;
     const glslang = device.glslang()!;
 
@@ -1424,14 +1426,14 @@ void main() { gl_Position = vert(); }`;
     }
 }
 
-export function WebGPUCmdFuncDestroyShader(device: WebGPUDevice, gpuShader: IWebGPUGPUShader) {
+export function WebGPUCmdFuncDestroyShader (device: WebGPUDevice, gpuShader: IWebGPUGPUShader) {
     if (gpuShader.glProgram) {
         device.gl.deleteProgram(gpuShader.glProgram);
         gpuShader.glProgram = null;
     }
 }
 
-export function WebGPUCmdFuncCreateInputAssember(device: WebGPUDevice, gpuInputAssembler: IWebGPUGPUInputAssembler) {
+export function WebGPUCmdFuncCreateInputAssember (device: WebGPUDevice, gpuInputAssembler: IWebGPUGPUInputAssembler) {
     gpuInputAssembler.glAttribs = new Array<IWebGPUAttrib>(gpuInputAssembler.attributes.length);
 
     const offsets = [0, 0, 0, 0, 0, 0, 0, 0];
@@ -1464,7 +1466,7 @@ export function WebGPUCmdFuncCreateInputAssember(device: WebGPUDevice, gpuInputA
     }
 }
 
-export function WebGPUCmdFuncDestroyInputAssembler(device: WebGPUDevice, gpuInputAssembler: IWebGPUGPUInputAssembler) {
+export function WebGPUCmdFuncDestroyInputAssembler (device: WebGPUDevice, gpuInputAssembler: IWebGPUGPUInputAssembler) {
     const it = gpuInputAssembler.glVAOs.values();
     let res = it.next();
     while (!res.done) {
@@ -1482,7 +1484,7 @@ interface IWebGPUStateCache {
     invalidateAttachments: GLenum[];
 }
 
-function maxElementOfImageArray(bufInfoArr: BufferTextureCopy[]): number {
+function maxElementOfImageArray (bufInfoArr: BufferTextureCopy[]): number {
     let maxSize = 0;
     for (let i = 0; i < bufInfoArr.length; i++) {
         const curSize = bufInfoArr[i].texExtent.width * bufInfoArr[i].texExtent.height * bufInfoArr[i].texExtent.depth;
@@ -1491,7 +1493,7 @@ function maxElementOfImageArray(bufInfoArr: BufferTextureCopy[]): number {
     return maxSize;
 }
 
-export function WebGPUCmdFuncCopyTexImagesToTexture(
+export function WebGPUCmdFuncCopyTexImagesToTexture (
     device: WebGPUDevice,
     texImages: TexImageSource[],
     gpuTexture: IWebGPUGPUTexture,
@@ -1529,7 +1531,25 @@ export function WebGPUCmdFuncCopyTexImagesToTexture(
             nativeDevice.queue.writeTexture(textureView,
                 imageData?.data.buffer as ArrayBuffer, texDataLayout,
                 [regions[i].texExtent.width, regions[i].texExtent.height, regions[i].texExtent.depth]);
-        } else {
+        } else if (texImages[i] instanceof HTMLImageElement) {
+            const image = texImages[i] as HTMLImageElement;
+            const canvas = document.createElement('canvas');
+            canvas.width = image.width;
+            canvas.height = image.height;
+            const context = canvas.getContext('2d');
+            context?.drawImage(image, 0, 0);
+            const imageData = context?.getImageData(0, 0, image.width, image.height);
+
+            const texDataLayout = {
+                bytesPerRow: pixelSize * texImages[i].width,
+            };
+            const textureView: GPUTextureCopyView = {
+                texture: gpuTexture.glTexture!,
+            };
+            nativeDevice.queue.writeTexture(textureView,
+                imageData?.data.buffer as ArrayBuffer, texDataLayout,
+                [regions[i].texExtent.width, regions[i].texExtent.height, regions[i].texExtent.depth]);
+        } else if (texImages[i] instanceof ImageBitmap) {
             const imageBmp = texImages[i] as ImageBitmap;
             const textureView: GPUTextureCopyView = {
                 texture: gpuTexture.glTexture!,
@@ -1547,6 +1567,8 @@ export function WebGPUCmdFuncCopyTexImagesToTexture(
                     depthOrArrayLayers: 1,
                 },
             );
+        } else {
+            throw new Error('Type not implemented.');
         }
 
         // const commandEncoder = nativeDevice.createCommandEncoder();
@@ -1568,7 +1590,7 @@ export function WebGPUCmdFuncCopyTexImagesToTexture(
     }
 }
 
-export function WebGPUCmdFuncCopyBuffersToTexture(
+export function WebGPUCmdFuncCopyBuffersToTexture (
     device: WebGPUDevice,
     buffers: ArrayBufferView[],
     gpuTexture: IWebGPUGPUTexture,

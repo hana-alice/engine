@@ -121,32 +121,18 @@ export const effects = [
             { "name": "frameTile_velLenScale", "type": 16, "count": 1 },
             { "name": "scale", "type": 16, "count": 1 }
           ]},
-          {"name": "SampleConstants", "defines": [], "binding": 1, "stageFlags": 1, "members": [
-            { "name": "u_sampleInfo", "type": 16, "count": 1 }
-          ]},
-          {"name": "TickConstants", "defines": [], "binding": 2, "stageFlags": 1, "members": [
-            { "name": "u_worldRot", "type": 16, "count": 1 },
-            { "name": "u_timeDelta", "type": 16, "count": 1 }
-          ]},
-          {"name": "ColorConstant", "defines": ["COLOR_OVER_TIME_MODULE_ENABLE"], "binding": 3, "stageFlags": 1, "members": [
-            { "name": "u_color_mode", "type": 5, "count": 1 }
-          ]},
-          {"name": "RotationConstant", "defines": ["ROTATION_OVER_TIME_MODULE_ENABLE"], "binding": 4, "stageFlags": 1, "members": [
-            { "name": "u_rotation_mode", "type": 5, "count": 1 }
-          ]},
-          {"name": "SizeConstant", "defines": ["SIZE_OVER_TIME_MODULE_ENABLE"], "binding": 5, "stageFlags": 1, "members": [
-            { "name": "u_size_mode", "type": 5, "count": 1 }
-          ]},
-          {"name": "ForceConstant", "defines": ["FORCE_OVER_TIME_MODULE_ENABLE"], "binding": 6, "stageFlags": 1, "members": [
+          {"name": "StateConstants", "defines": [], "binding": 1, "stageFlags": 1, "members": [
+            { "name": "u_color_mode", "type": 5, "count": 1 },
+            { "name": "u_rotation_mode", "type": 5, "count": 1 },
+            { "name": "u_size_mode", "type": 5, "count": 1 },
             { "name": "u_force_mode", "type": 5, "count": 1 },
-            { "name": "u_force_space", "type": 5, "count": 1 }
-          ]},
-          {"name": "VelocityConstant", "defines": ["VELOCITY_OVER_TIME_MODULE_ENABLE"], "binding": 7, "stageFlags": 1, "members": [
+            { "name": "u_force_space", "type": 5, "count": 1 },
             { "name": "u_velocity_mode", "type": 5, "count": 1 },
-            { "name": "u_velocity_space", "type": 5, "count": 1 }
-          ]},
-          {"name": "AnimationConstant", "defines": ["TEXTURE_ANIMATION_MODULE_ENABLE"], "binding": 8, "stageFlags": 1, "members": [
-            { "name": "u_anim_info", "type": 16, "count": 1 }
+            { "name": "u_velocity_space", "type": 5, "count": 1 },
+            { "name": "u_sampleInfo", "type": 16, "count": 1 },
+            { "name": "u_worldRot", "type": 16, "count": 1 },
+            { "name": "u_timeDelta", "type": 16, "count": 1 },
+            { "name": "u_anim_info", "type": 16, "count": 1 },
           ]},
           {"name": "FragConstants", "defines": [], "binding": 9, "stageFlags": 16, "members": [
             { "name": "tintColor", "type": 16, "count": 1 }

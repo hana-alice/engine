@@ -23,15 +23,6 @@ precision mediump float;
 #define TEXTURE_ANIMATION_RAND_OFFSET 90794.
 #define VELOCITY_OVERTIME_RAND_OFFSET 197866.
 
-uniform SampleConstants {
-  vec4 u_sampleInfo;
-};
-
-uniform TickConstants {
-  vec4 u_worldRot;
-  vec4 u_timeDelta;
-};
-
 in vec4 a_position_starttime; // center position,particle start time
 in vec4 a_size_uv;  // xyz:size, w:uv_0
 in vec4 a_rotation_uv;  // xyz:rotation, w:uv_1
@@ -84,47 +75,42 @@ float pseudoRandom (float seed) {
 
 #if COLOR_OVER_TIME_MODULE_ENABLE
   uniform sampler2D color_over_time_tex0;
-  uniform ColorConstant {
-    int u_color_mode;
-  };
 #endif
 
 #if ROTATION_OVER_TIME_MODULE_ENABLE
   uniform sampler2D rotation_over_time_tex0;
-  uniform RotationConstant {
-    int u_rotation_mode;
-  };
 #endif
 
 #if SIZE_OVER_TIME_MODULE_ENABLE
   uniform sampler2D size_over_time_tex0;
-  uniform SizeConstant {
-    int u_size_mode;
-  };
 #endif
 
 #if FORCE_OVER_TIME_MODULE_ENABLE
   uniform sampler2D force_over_time_tex0;
-  uniform ForceConstant {
-    int u_force_mode;
-    int u_force_space;
-  };
 #endif
 
 #if VELOCITY_OVER_TIME_MODULE_ENABLE
   uniform sampler2D velocity_over_time_tex0;
-  uniform VelocityConstant {
-    int u_velocity_mode;
-    int u_velocity_space;
-  };
 #endif
 
 #if TEXTURE_ANIMATION_MODULE_ENABLE
   uniform sampler2D texture_animation_tex0;
-  uniform AnimationConstant {
-    vec4 u_anim_info;
-  };
 #endif
+
+uniform StateConstant {
+  vec4 u_sampleInfo;
+  vec4 u_worldRot;
+  vec4 u_timeDelta;
+  vec4 u_anim_info;
+  int u_color_mode;
+  int u_rotation_mode;
+  int u_size_mode;
+  int u_force_mode;
+  int u_force_space;
+  int u_velocity_mode;
+  int u_velocity_space;
+};
+
 
 float repeat (float t, float length) {
   return t - floor(t / length) * length;

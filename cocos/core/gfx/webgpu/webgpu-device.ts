@@ -35,99 +35,99 @@ import {
     BufferUsageBit, MemoryUsageBit, BufferFlagBit, BufferTextureCopy, Rect, DescriptorSetInfo,
     BufferInfo, BufferViewInfo, CommandBufferInfo, DeviceInfo, BindingMappingInfo,
     FramebufferInfo, InputAssemblerInfo, QueueInfo, RenderPassInfo, SamplerInfo,
-    ShaderInfo, PipelineLayoutInfo, DescriptorSetLayoutInfo, TextureInfo, TextureViewInfo, GlobalBarrierInfo, TextureBarrierInfo
+    ShaderInfo, PipelineLayoutInfo, DescriptorSetLayoutInfo, TextureInfo, TextureViewInfo, GlobalBarrierInfo, TextureBarrierInfo,
 } from '../base/define';
 import { WebGPUCommandAllocator } from './webgpu-command-allocator';
 import { GlobalBarrier } from '../base/global-barrier';
 import { TextureBarrier } from '../base/texture-barrier';
 
 export class WebGPUDevice extends Device {
-    public flushCommands(cmdBuffs: CommandBuffer[]): void {
-        throw new Error('Method not implemented.');
+    public flushCommands (cmdBuffs: CommandBuffer[]): void {
+        // throw new Error('Method not implemented.');
     }
-    public createGlobalBarrier(info: GlobalBarrierInfo): GlobalBarrier {
-        throw new Error('Method not implemented.');
+    public createGlobalBarrier (info: GlobalBarrierInfo): GlobalBarrier {
+        // throw new Error('Method not implemented.');
     }
-    public createTextureBarrier(info: TextureBarrierInfo): TextureBarrier {
-        throw new Error('Method not implemented.');
+    public createTextureBarrier (info: TextureBarrierInfo): TextureBarrier {
+        // throw new Error('Method not implemented.');
     }
-    get gl(): WebGL2RenderingContext {
+    get gl (): WebGL2RenderingContext {
         return null!;
     }
 
-    get isAntialias(): boolean {
+    get isAntialias (): boolean {
         return null!;
     }
 
-    get isPremultipliedAlpha(): boolean {
+    get isPremultipliedAlpha (): boolean {
         return null!;
     }
 
-    get useVAO(): boolean {
+    get useVAO (): boolean {
         return null!;
     }
 
-    get bindingMappingInfo() {
+    get bindingMappingInfo () {
         return this._bindingMappingInfo;
     }
 
-    get EXT_texture_filter_anisotropic() {
+    get EXT_texture_filter_anisotropic () {
         return null!;
     }
 
-    get OES_texture_float_linear() {
+    get OES_texture_float_linear () {
         return null!;
     }
 
-    get EXT_color_buffer_float() {
+    get EXT_color_buffer_float () {
         return null!;
     }
 
-    get EXT_disjoint_timer_query_webgl2() {
+    get EXT_disjoint_timer_query_webgl2 () {
         return null!;
     }
 
-    get WEBGL_compressed_texture_etc1() {
+    get WEBGL_compressed_texture_etc1 () {
         return null!;
     }
 
-    get WEBGL_compressed_texture_etc() {
+    get WEBGL_compressed_texture_etc () {
         return null!;
     }
 
-    get WEBGL_compressed_texture_pvrtc() {
+    get WEBGL_compressed_texture_pvrtc () {
         return null!;
     }
 
-    get WEBGL_compressed_texture_s3tc() {
+    get WEBGL_compressed_texture_s3tc () {
         return null!;
     }
 
-    get WEBGL_compressed_texture_s3tc_srgb() {
+    get WEBGL_compressed_texture_s3tc_srgb () {
         return null!;
     }
 
-    get WEBGL_texture_storage_multisample() {
+    get WEBGL_texture_storage_multisample () {
         return null!;
     }
 
-    get WEBGL_debug_shaders() {
+    get WEBGL_debug_shaders () {
         return null!;
     }
 
-    get WEBGL_lose_context() {
+    get WEBGL_lose_context () {
         return null!;
     }
 
-    get multiDrawIndirectSupport() {
+    get multiDrawIndirectSupport () {
         return this._multiDrawIndirect;
     }
 
-    get defaultColorTex() {
+    get defaultColorTex () {
         return this._swapChain?.getCurrentTexture();
     }
 
-    get defaultDepthStencilTex() {
+    get defaultDepthStencilTex () {
         return this._defaultDepthStencilTex;
     }
 
@@ -146,11 +146,11 @@ export class WebGPUDevice extends Device {
     private _multiDrawIndirect = false;
     private _defaultDepthStencilTex: GPUTexture | null = null;
 
-    public initialize(info: DeviceInfo): Promise<boolean> {
+    public initialize (info: DeviceInfo): Promise<boolean> {
         return this.initDevice(info);
     }
 
-    private async initDevice(info: DeviceInfo): Promise<boolean> {
+    private async initDevice (info: DeviceInfo): Promise<boolean> {
         this._bindingMappingInfo = info.bindingMappingInfo;
         if (!this._bindingMappingInfo.bufferOffsets.length) this._bindingMappingInfo.bufferOffsets.push(0);
         if (!this._bindingMappingInfo.samplerOffsets.length) this._bindingMappingInfo.samplerOffsets.push(0);
@@ -191,6 +191,7 @@ export class WebGPUDevice extends Device {
         this._colorFmt = Format.BGRA8;
         this._caps.clipSpaceMinZ = 0.0;
         this._caps.uboOffsetAlignment = 256;
+        this._caps.maxUniformBufferBindings = 12;
 
         // FIXME: require by query
         this._multiDrawIndirect = false;
@@ -245,7 +246,7 @@ export class WebGPUDevice extends Device {
         return true;
     }
 
-    public destroy(): void {
+    public destroy (): void {
         if (this._defaultDepthStencilTex) {
             this._defaultDepthStencilTex?.destroy();
         }
@@ -263,26 +264,26 @@ export class WebGPUDevice extends Device {
         }
     }
 
-    public resize(width: number, height: number) {
+    public resize (width: number, height: number) {
 
     }
 
-    public acquire() {
+    public acquire () {
     }
 
-    get swapChain() {
+    get swapChain () {
         return this._swapChain;
     }
 
-    public nativeDevice() {
+    public nativeDevice () {
         return this._device;
     }
 
-    public glslang() {
+    public glslang () {
         return this._glslang;
     }
 
-    public present() {
+    public present () {
         const queue = (this._queue as unknown as WebGPUQueue);
         this._numDrawCalls = queue.numDrawCalls;
         this._numInstances = queue.numInstances;
@@ -290,7 +291,7 @@ export class WebGPUDevice extends Device {
         queue.clear();
     }
 
-    public createCommandBuffer(info: CommandBufferInfo): CommandBuffer {
+    public createCommandBuffer (info: CommandBufferInfo): CommandBuffer {
         const cmdBuff = new WebGPUCommandBuffer(this);
         if (cmdBuff.initialize(info)) {
             return cmdBuff;
@@ -298,7 +299,7 @@ export class WebGPUDevice extends Device {
         return null!;
     }
 
-    public createBuffer(info: BufferInfo | BufferViewInfo): Buffer {
+    public createBuffer (info: BufferInfo | BufferViewInfo): Buffer {
         const buffer = new WebGPUBuffer(this);
         if (buffer.initialize(info)) {
             return buffer;
@@ -306,7 +307,7 @@ export class WebGPUDevice extends Device {
         return null!;
     }
 
-    public createTexture(info: TextureInfo | TextureViewInfo): Texture {
+    public createTexture (info: TextureInfo | TextureViewInfo): Texture {
         const texture = new WebGPUTexture(this);
         if (texture.initialize(info)) {
             return texture;
@@ -314,7 +315,7 @@ export class WebGPUDevice extends Device {
         return null!;
     }
 
-    public createSampler(info: SamplerInfo): Sampler {
+    public createSampler (info: SamplerInfo): Sampler {
         const sampler = new WebGPUSampler(this);
         if (sampler.initialize(info)) {
             return sampler;
@@ -322,7 +323,7 @@ export class WebGPUDevice extends Device {
         return null!;
     }
 
-    public createDescriptorSet(info: DescriptorSetInfo): DescriptorSet {
+    public createDescriptorSet (info: DescriptorSetInfo): DescriptorSet {
         const descriptorSet = new WebGPUDescriptorSet(this);
         if (descriptorSet.initialize(info)) {
             return descriptorSet;
@@ -330,7 +331,7 @@ export class WebGPUDevice extends Device {
         return null!;
     }
 
-    public createShader(info: ShaderInfo): Shader {
+    public createShader (info: ShaderInfo): Shader {
         const shader = new WebGPUShader(this);
         if (shader.initialize(info)) {
             return shader;
@@ -338,7 +339,7 @@ export class WebGPUDevice extends Device {
         return null!;
     }
 
-    public createInputAssembler(info: InputAssemblerInfo): InputAssembler {
+    public createInputAssembler (info: InputAssemblerInfo): InputAssembler {
         const inputAssembler = new WebGPUInputAssembler(this);
         if (inputAssembler.initialize(info)) {
             return inputAssembler;
@@ -346,7 +347,7 @@ export class WebGPUDevice extends Device {
         return null!;
     }
 
-    public createRenderPass(info: RenderPassInfo): RenderPass {
+    public createRenderPass (info: RenderPassInfo): RenderPass {
         const renderPass = new WebGPURenderPass(this);
         if (renderPass.initialize(info)) {
             return renderPass;
@@ -354,7 +355,7 @@ export class WebGPUDevice extends Device {
         return null!;
     }
 
-    public createFramebuffer(info: FramebufferInfo): Framebuffer {
+    public createFramebuffer (info: FramebufferInfo): Framebuffer {
         const framebuffer = new WebGPUFramebuffer(this);
         if (framebuffer.initialize(info)) {
             return framebuffer;
@@ -362,7 +363,7 @@ export class WebGPUDevice extends Device {
         return null!;
     }
 
-    public createDescriptorSetLayout(info: DescriptorSetLayoutInfo): DescriptorSetLayout {
+    public createDescriptorSetLayout (info: DescriptorSetLayoutInfo): DescriptorSetLayout {
         const descriptorSetLayout = new WebGPUDescriptorSetLayout(this);
         if (descriptorSetLayout.initialize(info)) {
             return descriptorSetLayout;
@@ -370,7 +371,7 @@ export class WebGPUDevice extends Device {
         return null!;
     }
 
-    public createPipelineLayout(info: PipelineLayoutInfo): PipelineLayout {
+    public createPipelineLayout (info: PipelineLayoutInfo): PipelineLayout {
         const pipelineLayout = new WebGPUPipelineLayout(this);
         if (pipelineLayout.initialize(info)) {
             return pipelineLayout;
@@ -378,7 +379,7 @@ export class WebGPUDevice extends Device {
         return null!;
     }
 
-    public createPipelineState(info: PipelineStateInfo): PipelineState {
+    public createPipelineState (info: PipelineStateInfo): PipelineState {
         const pipelineState = new WebGPUPipelineState(this);
         if (pipelineState.initialize(info)) {
             return pipelineState;
@@ -386,7 +387,7 @@ export class WebGPUDevice extends Device {
         return null!;
     }
 
-    public createQueue(info: QueueInfo): Queue {
+    public createQueue (info: QueueInfo): Queue {
         const queue = new WebGPUQueue(this);
         if (queue.initialize(info)) {
             return queue;
@@ -394,7 +395,7 @@ export class WebGPUDevice extends Device {
         return null!;
     }
 
-    public copyBuffersToTexture(buffers: ArrayBufferView[], texture: Texture, regions: BufferTextureCopy[]) {
+    public copyBuffersToTexture (buffers: ArrayBufferView[], texture: Texture, regions: BufferTextureCopy[]) {
         WebGPUCmdFuncCopyBuffersToTexture(
             this,
             buffers,
@@ -403,7 +404,7 @@ export class WebGPUDevice extends Device {
         );
     }
 
-    public copyTexImagesToTexture(
+    public copyTexImagesToTexture (
         texImages: TexImageSource[],
         texture: Texture,
         regions: BufferTextureCopy[],
@@ -416,11 +417,11 @@ export class WebGPUDevice extends Device {
         );
     }
 
-    public copyFramebufferToBuffer(
+    public copyFramebufferToBuffer (
         srcFramebuffer: Framebuffer,
         dstBuffer: ArrayBuffer,
         regions: BufferTextureCopy[],
     ) { }
 
-    public blitFramebuffer(src: Framebuffer, dst: Framebuffer, srcRect: Rect, dstRect: Rect, filter: Filter) { }
+    public blitFramebuffer (src: Framebuffer, dst: Framebuffer, srcRect: Rect, dstRect: Rect, filter: Filter) { }
 }

@@ -10,11 +10,11 @@ import {
     DescriptorSetLayoutBinding,
     DescriptorSetInfo,
     DESCRIPTOR_BUFFER_TYPE,
-    DESCRIPTOR_SAMPLER_TYPE
+    DESCRIPTOR_SAMPLER_TYPE,
 } from '../base/define';
 
 export class WebGPUDescriptorSet extends DescriptorSet {
-    get gpuDescriptorSet(): IWebGPUGPUDescriptorSet {
+    get gpuDescriptorSet (): IWebGPUGPUDescriptorSet {
         return this._gpuDescriptorSet as IWebGPUGPUDescriptorSet;
     }
 
@@ -23,7 +23,7 @@ export class WebGPUDescriptorSet extends DescriptorSet {
     private _textureIdxMap = new Map<number, number>();
     private _samplerIdxMap = new Map<number, number>();
 
-    public initialize(info: DescriptorSetInfo): boolean {
+    public initialize (info: DescriptorSetInfo): boolean {
         this._layout = info.layout;
         const { bindings, descriptorIndices, descriptorCount } = (info.layout as WebGPUDescriptorSetLayout).gpuDescriptorSetLayout;
 
@@ -42,21 +42,7 @@ export class WebGPUDescriptorSet extends DescriptorSet {
             const binding = bindings[i];
             for (let j = 0; j < binding.count; j++) {
                 if (binding.descriptorType !== DescriptorType.UNKNOWN) {
-                    if (binding.descriptorType === DESCRIPTOR_SAMPLER_TYPE) {
-                        const sampler = (defaultResource.sampler as unknown as WebGPUSampler).gpuSampler;
-                        gpuDescriptors.push({
-                            type: binding.descriptorType,
-                            gpuBuffer: null,
-                            gpuTexture: null,
-                            gpuSampler: sampler,
-                        });
-                        const smpBindGrpEntry: GPUBindGroupEntry = {
-                            binding: binding.binding,
-                            resource: sampler.glSampler!,
-                        };
-                        this._bindGroupEntries.push(smpBindGrpEntry);
-                        this._samplerIdxMap.set(this._bindGroupEntries.length - 1, i);
-
+                    if (binding.descriptorType & DescriptorType.SAMPLER_TEXTURE) {
                         const texture = (defaultResource.texture as unknown as WebGPUTexture).gpuTexture;
                         gpuDescriptors.push({
                             type: binding.descriptorType,
@@ -66,11 +52,25 @@ export class WebGPUDescriptorSet extends DescriptorSet {
                         });
 
                         const bindGrpEntry: GPUBindGroupEntry = {
-                            binding: binding.binding + 16,
+                            binding: binding.binding,
                             resource: texture.glTexture!.createView(),
                         };
                         this._bindGroupEntries.push(bindGrpEntry);
                         this._textureIdxMap.set(this._bindGroupEntries.length - 1, i);
+
+                        const sampler = (defaultResource.sampler as unknown as WebGPUSampler).gpuSampler;
+                        gpuDescriptors.push({
+                            type: binding.descriptorType,
+                            gpuBuffer: null,
+                            gpuTexture: null,
+                            gpuSampler: sampler,
+                        });
+                        const smpBindGrpEntry: GPUBindGroupEntry = {
+                            binding: binding.binding + 16,
+                            resource: sampler.glSampler!,
+                        };
+                        this._bindGroupEntries.push(smpBindGrpEntry);
+                        this._samplerIdxMap.set(this._bindGroupEntries.length - 1, i);
                     } else if (binding.descriptorType & DESCRIPTOR_BUFFER_TYPE) {
                         const buffer = (defaultResource.buffer as WebGPUBuffer).gpuBuffer;
                         gpuDescriptors.push({
@@ -97,7 +97,7 @@ export class WebGPUDescriptorSet extends DescriptorSet {
         return true;
     }
 
-    public destroy() {
+    public destroy () {
         this._layout = null;
         this._gpuDescriptorSet = null;
         this._bindGroupEntries = [];
@@ -105,7 +105,7 @@ export class WebGPUDescriptorSet extends DescriptorSet {
         this._textureIdxMap.clear();
     }
 
-    public update() {
+    public update () {
         if (this._isDirty && this._gpuDescriptorSet) {
             const descriptors = this._gpuDescriptorSet.gpuDescriptors;
             const layout = this._layout as WebGPUDescriptorSetLayout;
@@ -131,14 +131,14 @@ export class WebGPUDescriptorSet extends DescriptorSet {
                         };
                         this._bindGroupEntries[i] = bindGrpEntry;
                     }
-                } else if (descriptors[i].type & DESCRIPTOR_SAMPLER_TYPE) {
+                } else if (descriptors[i].type & DescriptorType.SAMPLER_TEXTURE) {
                     const samplerIdx = this._samplerIdxMap.get(i)!;
                     const textureIdx = this._textureIdxMap.get(i)!;
                     if (this._samplers[samplerIdx]) {
                         binding = (this._layout as WebGPUDescriptorSetLayout).gpuDescriptorSetLayout.bindings[samplerIdx];
                         descriptors[i].gpuSampler = (this._samplers[samplerIdx] as unknown as WebGPUSampler).gpuSampler;
                         const bindGrpEntry: GPUBindGroupEntry = {
-                            binding: binding.binding,
+                            binding: binding.binding + 16,
                             resource: descriptors[i].gpuSampler?.glSampler as GPUSampler,
                         };
                         this._bindGroupEntries[i] = bindGrpEntry;
@@ -149,7 +149,7 @@ export class WebGPUDescriptorSet extends DescriptorSet {
                         descriptors[i].gpuTexture = (this._textures[textureIdx] as unknown as WebGPUTexture).gpuTexture;
 
                         const bindGrpEntry: GPUBindGroupEntry = {
-                            binding: binding.binding + 16,
+                            binding: binding.binding,
                             resource: descriptors[i].gpuTexture?.glTexture?.createView() as GPUTextureView,
                         };
 
