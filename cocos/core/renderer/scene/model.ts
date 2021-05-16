@@ -186,6 +186,10 @@ export class Model {
         ModelPool.set(this._handle, ModelView.ENABLED, val ? 1 : 0);
     }
 
+    get getSubModelHandle () : number {
+        return ModelPool.get(this._handle, ModelView.SUB_MODEL_ARRAY) as unknown as number;
+    }
+
     public type = ModelType.DEFAULT;
     public scene: RenderScene | null = null;
     public isDynamicBatching = false;
