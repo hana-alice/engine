@@ -452,6 +452,17 @@ class TypedArrayPool<P extends PoolType, T extends TypedArrayConstructor, D exte
         this.assign(handle, array[0], value);
     }
 
+    public extend (handle: IHandle<P>, size: number, lastValue: D) {
+        const bufferIdx = this._bufferIdxMask & handle as unknown as number;
+        const array = this._buffers.get(bufferIdx);
+        if (!array) {
+            if (DEBUG) { console.warn('invalid array pool handle'); }
+            return;
+        }
+
+        this.assign(handle, size, lastValue);
+    }
+
     public pop (handle: IHandle<P>) {
         const bufferIdx = this._bufferIdxMask & handle as unknown as number;
         const array = this._buffers.get(bufferIdx);
@@ -541,6 +552,7 @@ export enum PoolType {
     BLEND_TARGET,
     BLEND_STATE,
     BATCH_2D,
+    CMIDATA,
     // arrays
     SUB_MODEL_ARRAY = 200,
     MODEL_ARRAY,
@@ -550,6 +562,7 @@ export enum PoolType {
     LIGHT_ARRAY,
     BLEND_TARGET_ARRAY,
     BATCH_ARRAY_2D,
+    CMIDATA_ARRAY,
     // raw resources
     RAW_BUFFER = 300,
     RAW_OBJECT = 400,
@@ -566,6 +579,7 @@ export type FramebufferHandle = IHandle<PoolType.FRAMEBUFFER>;
 export type PassHandle = IHandle<PoolType.PASS>;
 export type SubModelHandle = IHandle<PoolType.SUB_MODEL>;
 export type ModelHandle = IHandle<PoolType.MODEL>;
+export type CMIDataHandle = IHandle<PoolType.CMIDATA>;
 export type SceneHandle = IHandle<PoolType.SCENE>;
 export type CameraHandle = IHandle<PoolType.CAMERA>;
 export type NodeHandle = IHandle<PoolType.NODE>;
@@ -576,6 +590,7 @@ export type RenderWindowHandle = IHandle<PoolType.RENDER_WINDOW>;
 export type SubModelArrayHandle = IHandle<PoolType.SUB_MODEL_ARRAY>;
 export type AttributeArrayHandle = IHandle<PoolType.ATTRIBUTE_ARRAY>;
 export type ModelArrayHandle = IHandle<PoolType.MODEL_ARRAY>;
+export type CMIDataArrayHandle = IHandle<PoolType.CMIDATA_ARRAY>;
 export type RawBufferHandle = IHandle<PoolType.RAW_BUFFER>;
 export type RawObjectHandle = IHandle<PoolType.RAW_OBJECT>;
 export type AmbientHandle = IHandle<PoolType.AMBIENT>;
@@ -618,6 +633,9 @@ export const SubModelArrayPool = new TypedArrayPool<PoolType.SUB_MODEL_ARRAY, Ui
 );
 export const ModelArrayPool = new TypedArrayPool<PoolType.MODEL_ARRAY, Uint32ArrayConstructor, ModelHandle>(
     PoolType.MODEL_ARRAY, Uint32Array, 32, 16,
+);
+export const CMIDataArrayPool = new TypedArrayPool<PoolType.CMIDATA_ARRAY, Uint32ArrayConstructor, CMIDataHandle>(
+    PoolType.CMIDATA_ARRAY, Uint32Array, 32, 16,
 );
 export const AttributeArrayPool = new TypedArrayPool<PoolType.ATTRIBUTE_ARRAY, Uint32ArrayConstructor, AttributeHandle>(
     PoolType.ATTRIBUTE_ARRAY, Uint32Array, 8, 4,
@@ -865,6 +883,7 @@ export enum SceneView {
     SPHERE_LIGHT_ARRAY, // array handle
     SPOT_LIGHT_ARRAY, // array handle
     BATCH_ARRAY_2D, // array handle
+    CMIDATA_CMD_ARRAY, // array handle
     COUNT,
 }
 interface ISceneViewType extends BufferTypeManifest<typeof SceneView> {
@@ -1252,13 +1271,13 @@ export enum LightView {
 interface ILightViewType extends BufferTypeManifest<typeof LightView> {
     [LightView.USE_COLOR_TEMPERATURE]: number;
     [LightView.ILLUMINANCE]: number;
-    [LightView.NODE]:NodeHandle;
-    [LightView.RANGE]:number;
-    [LightView.TYPE]:number;
-    [LightView.AABB]:AABBHandle;
-    [LightView.FRUSTUM]:FrustumHandle;
-    [LightView.SIZE]:number;
-    [LightView.SPOT_ANGLE]:number;
+    [LightView.NODE]: NodeHandle;
+    [LightView.RANGE]: number;
+    [LightView.TYPE]: number;
+    [LightView.AABB]: AABBHandle;
+    [LightView.FRUSTUM]: FrustumHandle;
+    [LightView.SIZE]: number;
+    [LightView.SPOT_ANGLE]: number;
     [LightView.ASPECT]: number;
     [LightView.DIRECTION]: Vec3;
     [LightView.COLOR]: Vec3;
@@ -1350,6 +1369,35 @@ const subMeshViewDataType: BufferDataTypeManifest<typeof SubMeshView> = {
 export const SubMeshPool = new BufferPool<PoolType.SUB_MESH, typeof SubMeshView, ISubMeshViewType>(
     PoolType.SUB_MESH, subMeshViewDataType, SubMeshView, 3,
 );
+
+export enum CMIDataView {
+    ACTION,
+    SPEED,
+    MODEL_ID,
+    TIMESTAMP,
+    POSITION = 4,
+    EULER_ANGLE = 7,
+    COUNT = 10,
+}
+
+interface ICMIDataType extends BufferTypeManifest<typeof CMIDataView> {
+    [CMIDataView.ACTION]: number;
+    [CMIDataView.SPEED]: number;
+    [CMIDataView.MODEL_ID]: number;
+    [CMIDataView.TIMESTAMP]: number;
+    [CMIDataView.POSITION]: Vec3;
+    [CMIDataView.EULER_ANGLE]: Vec3;
+    [CMIDataView.COUNT]: never;
+}
+const CMIDataType: BufferDataTypeManifest<typeof CMIDataView> = {
+    [CMIDataView.ACTION]: BufferDataType.UINT32,
+    [CMIDataView.SPEED]: BufferDataType.FLOAT32,
+    [CMIDataView.MODEL_ID]: BufferDataType.UINT32,
+    [CMIDataView.TIMESTAMP]: BufferDataType.FLOAT32,
+    [CMIDataView.POSITION]: BufferDataType.FLOAT32,
+    [CMIDataView.EULER_ANGLE]: BufferDataType.FLOAT32,
+    [CMIDataView.COUNT]: BufferDataType.NEVER,
+};
 
 export enum RasterizerStateView {
     IS_DISCARD,

@@ -39,10 +39,13 @@ import { SphereLight } from './sphere-light';
 import { SpotLight } from './spot-light';
 import { TransformBit } from '../../scene-graph/node-enum';
 import { legacyCC } from '../../global-exports';
-import { ScenePool, SceneView, ModelArrayPool, ModelArrayHandle, SceneHandle, NULL_HANDLE,
-    UIBatchArrayHandle, UIBatchArrayPool, LightArrayHandle, LightArrayPool } from '../core/memory-pools';
+import {
+    ScenePool, SceneView, ModelArrayPool, ModelArrayHandle, SceneHandle, NULL_HANDLE,
+    UIBatchArrayHandle, UIBatchArrayPool, LightArrayHandle, LightArrayPool, CMIDataArrayHandle, CMIDataArrayPool,
+} from '../core/memory-pools';
 import { DrawBatch2D } from '../../../2d/renderer/draw-batch';
 
+const MAX_OPERATIONS_PER_FRAME = 100;
 export interface IRenderSceneInfo {
     name: string;
 }
@@ -87,7 +90,7 @@ export class RenderScene {
         return this._models;
     }
 
-    get handle () : SceneHandle {
+    get handle (): SceneHandle {
         return this._scenePoolHandle;
     }
 
@@ -114,6 +117,8 @@ export class RenderScene {
     private _batchArrayHandle: UIBatchArrayHandle = NULL_HANDLE;
     private _sphereLightsHandle: LightArrayHandle = NULL_HANDLE;
     private _spotLightsHandle: LightArrayHandle = NULL_HANDLE;
+    private _cmdCMIDataArrayHandle: CMIDataArrayHandle = NULL_HANDLE;
+    private _cmdDrivenEnabled = true;
 
     constructor (root: Root) {
         this._root = root;
@@ -360,6 +365,12 @@ export class RenderScene {
         if (!this._batchArrayHandle) {
             this._batchArrayHandle = UIBatchArrayPool.alloc();
             ScenePool.set(this._scenePoolHandle, SceneView.BATCH_ARRAY_2D, this._batchArrayHandle);
+        }
+
+        if (this._cmdDrivenEnabled) {
+            this._cmdCMIDataArrayHandle = CMIDataArrayPool.alloc();
+            CMIDataArrayPool.extend(this._cmdCMIDataArrayHandle, MAX_OPERATIONS_PER_FRAME, NULL_HANDLE);
+            ScenePool.set(this._scenePoolHandle, SceneView.CMIDATA_CMD_ARRAY, this._cmdCMIDataArrayHandle);
         }
     }
 }

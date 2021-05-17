@@ -28,7 +28,7 @@
  * @module scene-graph
  */
 
-import {
+ import {
     ccclass, editable, serializable, type,
 } from 'cc.decorator';
 import { Layers } from './layers';
@@ -46,10 +46,6 @@ import {
 import { NodeSpace, TransformBit } from './node-enum';
 import { applyMountedChildren, applyPropertyOverrides, applyTargetOverrides, createNodeWithPrefab, generateTargetMap } from '../utils/prefab-utils';
 import { Component } from '../components';
-import { assetManager } from '../asset-manager';
-import { RequestType } from '../asset-manager/shared';
-import { Prefab } from '../assets';
-import { instantiate } from '../data';
 
 const v3_a = new Vec3();
 const q_a = new Quat();
@@ -60,13 +56,7 @@ const m3_1 = new Mat3();
 const m3_scaling = new Mat3();
 const m4_1 = new Mat4();
 const bookOfChange = new Map<Node, number>();
-const MODELTYPE = {
-    MAINCAR: -1, // 主车辆
-    CAR: 0, // 车辆
-    HUMAN: 1, // 人物
-    BICYCLE: 2, // 自行车
-    TRUCK: 3, // 卡车
-};
+
 /**
  * @zh
  * 场景树中的基本节点，基本特性有：
@@ -369,70 +359,6 @@ export class Node extends BaseNode {
     // hierarchy
     // ===============================
 
-    public updateModel (modelID: string, position: Vec3, euler: Vec3, speed: number) {
-        const model = this.getChildByName(modelID);
-        if (model) {
-
-        }
-    }
-
-    public createModel (modelID: string, modelType: number, position: Vec3, euler: Vec3) {
-        let path = '';
-        switch (modelType) {
-        case MODELTYPE.MAINCAR:
-            path = 'model/car/mainCar';
-            break;
-        case MODELTYPE.CAR:
-            path = 'model/car/car';
-            break;
-        case MODELTYPE.HUMAN:
-            path = 'model/human/human';
-            break;
-        case MODELTYPE.BICYCLE:
-            path = 'model/bicycle/bicycle';
-            break;
-        case MODELTYPE.TRUCK:
-            path = 'model/truck/truck';
-            break;
-        default:
-            path = 'model/car/car';
-            break;
-        }
-
-        const onComp = (err: Error | null, prefabModle: Prefab) => {
-            if (err) {
-                return;
-            }
-
-            prefabModle.addRef();
-            const nodeModel = instantiate(prefabModle);
-            this.addChild(nodeModel);
-            nodeModel.name = modelID;
-            this.updateModel(modelID, position, euler, 0);
-            // if (this.dictModelData.hasOwnProperty(modelID)) {
-            //     const data = this.dictModelData[modelID];
-            //     nodeModel.getComponent(ModelManager)!.updateModelData(modelID, data.position, data.euler, data.moveSpeed);
-            //     delete this.dictModelData[modelID];
-            // } else {
-            //     nodeModel.getComponent(ModelManager)!.updateModelData(modelID, position, euler);
-            // }
-
-            // this.prefabModelGroup.push(prefabModle);
-            // this.dictModelGroup[modelID] = nodeModel;
-        };
-
-        const options = { __requestType__: RequestType.PATH, type: Prefab, bundle: assetManager.resources?.config.name, __outputAsArray__: Array.isArray(path) };
-        assetManager.loadAny(path, options, null, onComp);
-        // legacyCC.director.root.device;
-    }
-
-    public removeModel (modelID: string) {
-        const model = this.getChildByName(modelID);
-        if (model) {
-            model.destroy();
-            this.removeChild(model);
-        }
-    }
     /**
      * @en Set parent of the node.
      * @zh 设置该节点的父节点。
